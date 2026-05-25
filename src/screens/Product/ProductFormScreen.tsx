@@ -72,26 +72,26 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     console.log('Scan IMEI1:', scanImei1);
     console.log('Scan IMEI2:', scanImei2);
     console.log('Prefill Data:', JSON.stringify(prefillData, null, 2));
-    
+
     if (existingProduct) {
       console.log('✏️ Loading existing product');
       setBrand(existingProduct.brand || '');
       setModel(existingProduct.model || '');
       setCategory(existingProduct.category || '');
       setBarcode(existingProduct.product_barcode || '');
-      
+
       // Handle IMEI fields - check both old and new names
       const imei1Value = existingProduct.imei1 || existingProduct.imei_primary || '';
       const imei2Value = existingProduct.imei2 || existingProduct.imei_secondary || '';
       setImei1(imei1Value);
       setImei2(imei2Value);
-      
+
       // Extract price and description from specs
       if (existingProduct.specs) {
         if (existingProduct.specs.price) setMrp(String(existingProduct.specs.price));
         if (existingProduct.specs.description) setDescription(existingProduct.specs.description);
       }
-      
+
       // Set pricing fields if available
       if (existingProduct.buying_price) setBuyingPrice(String(existingProduct.buying_price));
       if (existingProduct.msp) setMsp(String(existingProduct.msp));
@@ -101,14 +101,14 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     } else {
       console.log('📝 Creating new product with scanned data');
       setBarcode(scanBarcode);
-      
+
       // Use scanned IMEI if available, otherwise use prefill IMEI
       const imei1ToUse = scanImei1 || (prefillData?.imei1 ? String(prefillData.imei1) : '');
       const imei2ToUse = scanImei2 || (prefillData?.imei2 ? String(prefillData.imei2) : '');
-      
+
       console.log('IMEI1 source:', scanImei1 ? 'scanned' : prefillData?.imei1 ? 'prefill' : 'none');
       console.log('IMEI2 source:', scanImei2 ? 'scanned' : prefillData?.imei2 ? 'prefill' : 'none');
-      
+
       setImei1(imei1ToUse);
       setImei2(imei2ToUse);
     }
@@ -186,12 +186,29 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       if (result.prefill) {
         if (result.prefill.brand) setBrand(result.prefill.brand);
         if (result.prefill.model) setModel(result.prefill.model);
+        if (result.prefill.color) setColor(result.prefill.color);
         if (result.prefill.category) setCategory(result.prefill.category);
-        if (result.prefill.specs) {
+        if (result.prefill.buying_price) setBuyingPrice(String(result.prefill.buying_price));
+        if (result.prefill.msp) setMsp(String(result.prefill.msp));
+        if (result.prefill.mrp) setMrp(String(result.prefill.mrp));
+
+        let newDescChunks: string[] = [];
+        if (result.prefill.description) {
+          newDescChunks.push(result.prefill.description);
+        }
+        if (result.prefill.specs && Object.keys(result.prefill.specs).length > 0) {
           const specsStr = Object.entries(result.prefill.specs)
+            .filter(([k]) => k !== 'voice_raw')
             .map(([k, v]) => `${k}: ${v}`)
             .join(', ');
-          setDescription((prev) => prev ? `${prev}\n${specsStr}` : specsStr);
+          if (specsStr) {
+            newDescChunks.push(specsStr);
+          }
+        }
+
+        if (newDescChunks.length > 0) {
+          const combinedDesc = newDescChunks.join('\n');
+          setDescription((prev) => prev ? `${prev}\n${combinedDesc}` : combinedDesc);
         }
       }
       Alert.alert('Success', 'Form fields updated from voice input!');

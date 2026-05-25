@@ -136,12 +136,41 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.quickAction}
+          onPress={() => navigation.navigate('SellScan')}
+        >
+          <View style={[styles.quickActionIcon, { backgroundColor: colors.success }]}>
+            <Ionicons name="cart-outline" size={24} color={colors.textInverse} />
+          </View>
+          <Text style={styles.quickActionText}>Sell</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.quickAction}
           onPress={() => navigation.navigate('ProductList')}
         >
           <View style={[styles.quickActionIcon, { backgroundColor: colors.surfaceAlt }]}>
             <Ionicons name="list-outline" size={24} color={colors.primary} />
           </View>
           <Text style={styles.quickActionText}>All</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Second Row: History */}
+      <View style={styles.quickActionsSecondary}>
+        <TouchableOpacity
+          style={styles.historyBtn}
+          onPress={() => navigation.navigate('SalesHistory')}
+        >
+          <View style={styles.historyBtnLeft}>
+            <View style={[styles.quickActionIcon, { backgroundColor: colors.info, width: 40, height: 40, borderRadius: 20 }]}>
+              <Ionicons name="analytics-outline" size={20} color={colors.textInverse} />
+            </View>
+            <View>
+              <Text style={styles.historyBtnTitle}>Sales History</Text>
+              <Text style={styles.historyBtnSub}>View all sold items</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
         </TouchableOpacity>
       </View>
       <View style={styles.sectionHeader}>
@@ -292,7 +321,7 @@ const styles = StyleSheet.create({
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing['3xl'],
+    gap: spacing.xl,
     marginBottom: spacing['2xl'],
     paddingVertical: spacing.md,
   },
@@ -311,6 +340,39 @@ const styles = StyleSheet.create({
   quickActionText: {
     ...typography.captionMedium,
     color: colors.text,
+  },
+
+  // History Button
+  quickActionsSecondary: {
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.xs,
+  },
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.sm,
+  },
+  historyBtnLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  historyBtnTitle: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  historyBtnSub: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 1,
   },
 
   // Section

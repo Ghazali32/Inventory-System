@@ -19,6 +19,7 @@ export const ProfileScreen: React.FC<{navigation: any}> = ({ navigation }) => {
   };
 
   const menuItems = [
+    { icon: 'business-outline' as const, label: 'Edit Business Profile', onPress: () => navigation.navigate('BusinessProfileForm', { isEditMode: true }) },
     { icon: 'person-outline' as const, label: 'Account Settings', onPress: () => {} },
     { icon: 'notifications-outline' as const, label: 'Notifications', onPress: () => {} },
     { icon: 'shield-checkmark-outline' as const, label: 'Privacy & Security', onPress: () => {} },

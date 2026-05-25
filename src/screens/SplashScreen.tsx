@@ -47,9 +47,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ navigation }) => {
     // Check auth and navigate
     const timer = setTimeout(async () => {
       const isAuthenticated = await checkAuth();
+      const isProfileComplete = useAuthStore.getState().isProfileComplete;
+
+      let initialRoute = 'Login';
+      if (isAuthenticated) {
+        initialRoute = isProfileComplete ? 'MainTabs' : 'BusinessProfileForm';
+      }
+
       navigation.reset({
         index: 0,
-        routes: [{ name: isAuthenticated ? 'MainTabs' : 'Login' }],
+        routes: [{ name: initialRoute }],
       });
     }, 2200);
 

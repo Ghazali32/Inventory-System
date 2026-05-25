@@ -34,9 +34,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     try {
       await login(username.trim(), password);
+      const isProfileComplete = useAuthStore.getState().isProfileComplete;
+
       navigation.reset({
         index: 0,
-        routes: [{ name: 'MainTabs' }],
+        routes: [{ name: isProfileComplete ? 'MainTabs' : 'BusinessProfileForm' }],
       });
     } catch (err: any) {
       // Error is already set in store

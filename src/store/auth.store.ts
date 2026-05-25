@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { create } from 'zustand';
-import { authAPI, AuthResponse } from '../api/auth.api';
+import { authAPI, AuthResponse, BusinessProfile } from '../api/auth.api';
 import { tokenManager } from '../utils/tokenManager';
 import { getDeviceId } from '../utils/device';
 
@@ -12,6 +12,8 @@ interface User {
 
 interface AuthState {
   user: User | null;
+  profile: BusinessProfile | null;
+  isProfileComplete: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -26,6 +28,7 @@ interface AuthState {
   }) => Promise<any>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
+  fetchProfile: () => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -45,6 +48,8 @@ async function processAuthResponse(response: AuthResponse) {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
+  profile: null,
+  isProfileComplete: false,
   isAuthenticated: false,
   isLoading: false,
   error: null,
@@ -80,6 +85,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         error: null,
       });
+
+      // Fetch profile after login
+      await get().fetchProfile();
     } catch (error: any) {
       console.log('--- SIGNIN ERROR ---');
       console.log('Error:', error);
@@ -178,12 +186,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const hasTokens = await tokenManager.hasValidTokens();
       if (hasTokens) {
         set({ isAuthenticated: true });
+        await get().fetchProfile();
+        
+        // If fetchProfile triggered a 401 and the interceptor cleared the tokens,
+        // we should reflect that the user is no longer authenticated.
+        const stillHasTokens = await tokenManager.hasValidTokens();
+        if (!stillHasTokens) {
+          set({ isAuthenticated: false, isProfileComplete: false, profile: null });
+          return false;
+        }
+        
         return true;
       }
-      set({ isAuthenticated: false });
+      set({ isAuthenticated: false, isProfileComplete: false, profile: null });
       return false;
     } catch {
-      set({ isAuthenticated: false });
+      set({ isAuthenticated: false, isProfileComplete: false, profile: null });
+      return false;
+    }
+  },
+
+  /**
+   * Fetch user's business profile
+   */
+  fetchProfile: async () => {
+    try {
+      const profile = await authAPI.getProfile();
+      // Check required fields
+      const isComplete = !!(
+        profile.shop_name &&
+        profile.owner_name &&
+        profile.shop_address &&
+        profile.shop_city &&
+        profile.shop_state &&
+        profile.shop_pincode &&
+        profile.shop_phone
+      );
+      set({ profile, isProfileComplete: isComplete });
+      return isComplete;
+    } catch (error: any) {
+      console.log('--- FETCH PROFILE ERROR ---');
+      console.log('Error:', error);
+      set({ profile: null, isProfileComplete: false });
       return false;
     }
   },

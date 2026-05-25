@@ -30,6 +30,12 @@
     },
     "plugins": [
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "20783fac-9aa9-4991-8953-6e4c2a0e1fa8"
+      }
+    },
+    "owner": "ghazali32"
   }
 }

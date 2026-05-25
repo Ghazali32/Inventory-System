@@ -5,10 +5,21 @@ import {
   ScanIngestResponse,
   CreateProductPayload,
   VoiceDraftResponse,
+  ScanForSellingResponse,
+  CheckoutPreviewPayload,
+  CheckoutPreviewResponse,
+  CheckoutCompletePayload,
+  CheckoutCompleteResponse,
+  SoldItemHistory,
+  CheckoutHistoryResponse,
+  BillingDetails,
+  SearchCustomerResult,
+  CustomerListResponse,
 } from '../api/product.api';
 
 interface ProductState {
   products: Product[];
+  salesHistory: SoldItemHistory[];
   isLoading: boolean;
   error: string | null;
   lastScanResult: ScanIngestResponse | null;
@@ -36,12 +47,23 @@ interface ProductState {
     payload: CreateProductPayload
   ) => Promise<Product>;
   deleteProduct: (productId: number) => Promise<void>;
+  scanForSelling: (
+    productBarcode: string,
+    imei1?: string,
+    imei2?: string
+  ) => Promise<ScanForSellingResponse>;
+  checkoutPreview: (payload: CheckoutPreviewPayload) => Promise<CheckoutPreviewResponse>;
+  checkoutComplete: (payload: CheckoutCompletePayload) => Promise<CheckoutCompleteResponse>;
+  fetchSalesHistory: (limit?: number, customerId?: string) => Promise<void>;
+  getInvoice: (invoiceNumber: string) => Promise<BillingDetails>;
+  searchCustomers: (search?: string, limit?: number) => Promise<CustomerListResponse>;
   clearScanResult: () => void;
   clearError: () => void;
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
   products: [],
+  salesHistory: [],
   isLoading: false,
   error: null,
   lastScanResult: null,
@@ -341,6 +363,177 @@ export const useProductStore = create<ProductState>((set, get) => ({
         'Failed to delete product';
       
       console.log('📝 [STORE] Error message:', message);
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Scan for selling — POST /api/products/scan-for-selling/
+   */
+  scanForSelling: async (
+    productBarcode: string,
+    imei1?: string,
+    imei2?: string
+  ) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] scanForSelling - Starting');
+
+    try {
+      const payload = {
+        product_barcode: productBarcode,
+        ...(imei1 ? { imei1 } : {}),
+        ...(imei2 ? { imei2 } : {}),
+      };
+
+      console.log('📤 [STORE] Calling scanForSelling with payload:', payload);
+      const result = await productAPI.scanForSelling(payload);
+
+      console.log('✅ [STORE] scanForSelling Success');
+      set({ isLoading: false });
+      return result;
+    } catch (error: any) {
+      console.error('❌ [STORE] scanForSelling Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Scan for selling failed';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Checkout preview — POST /api/checkout/preview/
+   */
+  checkoutPreview: async (payload: CheckoutPreviewPayload) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] checkoutPreview - Starting');
+
+    try {
+      console.log('📤 [STORE] Calling checkoutPreview with payload:', payload);
+      const result = await productAPI.checkoutPreview(payload);
+
+      console.log('✅ [STORE] checkoutPreview Success');
+      set({ isLoading: false });
+      return result;
+    } catch (error: any) {
+      console.error('❌ [STORE] checkoutPreview Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Checkout preview failed';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Checkout complete — POST /api/checkout/complete/
+   * Finalizes the sale, marks inventory as sold
+   */
+  checkoutComplete: async (payload: CheckoutCompletePayload) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] checkoutComplete - Starting');
+
+    try {
+      console.log('📤 [STORE] Calling checkoutComplete with payload:', payload);
+      const result = await productAPI.checkoutComplete(payload);
+
+      console.log('✅ [STORE] checkoutComplete Success');
+      console.log('🧾 Invoice Number:', result.invoice_number);
+
+      // Mark the product as sold in local state
+      if (result.inventory_id) {
+        set((state) => ({
+          products: state.products.map((p) =>
+            p.id === result.inventory_id ? { ...p, sold: true, sold_datetime: new Date().toISOString() } : p
+          ),
+        }));
+      }
+
+      set({ isLoading: false });
+      return result;
+    } catch (error: any) {
+      console.error('❌ [STORE] checkoutComplete Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Checkout failed';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Fetch sales history — GET /api/checkout/history/
+   */
+  fetchSalesHistory: async (limit?: number, customerId?: string) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] fetchSalesHistory - Starting');
+
+    try {
+      const result = await productAPI.getCheckoutHistory(limit, customerId);
+
+      console.log('✅ [STORE] fetchSalesHistory Success, count:', result.count);
+      set({ salesHistory: result.results, isLoading: false });
+    } catch (error: any) {
+      console.error('❌ [STORE] fetchSalesHistory Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to fetch sales history';
+      set({ error: message, isLoading: false });
+    }
+  },
+
+  /**
+   * Fetch invoice details — GET /api/checkout/invoices/<invoice_number>/
+   */
+  getInvoice: async (invoiceNumber: string) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] getInvoice - Starting, Invoice Number:', invoiceNumber);
+
+    try {
+      const billingDetails = await productAPI.getInvoice(invoiceNumber);
+      console.log('✅ [STORE] getInvoice Success');
+      set({ isLoading: false });
+      return billingDetails;
+    } catch (error: any) {
+      console.error('❌ [STORE] getInvoice Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to fetch invoice details';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Search customers — GET /api/checkout/customers/
+   */
+  searchCustomers: async (search?: string, limit?: number) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] searchCustomers - Starting, Search Query:', search);
+
+    try {
+      const result = await productAPI.searchCustomers(search, limit);
+      console.log('✅ [STORE] searchCustomers Success, count:', result.count);
+      set({ isLoading: false });
+      return result;
+    } catch (error: any) {
+      console.error('❌ [STORE] searchCustomers Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to search customers';
       set({ error: message, isLoading: false });
       throw new Error(message);
     }

@@ -143,6 +143,50 @@ Response fields:
 | `device_policy.single_active_device` | boolean | Always `true` |
 | `device_policy.active_device_id` | string | Active device ID |
 
+### `GET` /api/accounts/profile/
+### `POST` /api/accounts/profile/
+### `PUT` /api/accounts/profile/
+
+**Purpose:**
+- After signin, the FE must prompt the user to fill their business profile (UserProfile).
+- This endpoint allows the user to create, update, or fetch their business profile.
+- The profile must be completed before proceeding to inventory or selling flows.
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+- `X-Device-Id: <device_id>` (required)
+
+**Request fields (POST/PUT):**
+| Field | Type | Required | Notes |
+|-------|------|----------|------|
+| `shop_name` | string | Yes | Business/shop name |
+| `owner_name` | string | Yes | Owner name |
+| `shop_address` | string | Yes | Address |
+| `shop_city` | string | Yes | City |
+| `shop_state` | string | Yes | State |
+| `shop_pincode` | string | Yes | Pincode |
+| `shop_phone` | string | Yes | Business phone |
+| `gst_registration_number` | string | No | GST number |
+| `pan_number` | string | No | PAN number |
+| `shop_license_number` | string | No | Shop license |
+| `shop_license_expiry` | string (date) | No | License expiry |
+| `bank_account_number` | string | No | Bank account |
+| `bank_ifsc_code` | string | No | IFSC code |
+| `bank_holder_name` | string | No | Account holder name |
+| `aadhar_number` | string | No | Aadhar number |
+
+**Response fields:**
+| Field | Type | Notes |
+|-------|------|------|
+| All above fields | | |
+| `created_at` | datetime | Profile created |
+| `updated_at` | datetime | Profile updated |
+
+**FE instructions:**
+- After signin, always call `GET /api/accounts/profile/`.
+- If profile is incomplete, show the form and submit via `POST` or `PUT`.
+- Block inventory/selling flow until profile is complete.
+
 ## Inventory and product models
 
 ### `products_productmaster`
@@ -336,6 +380,89 @@ Notes:
 
 ## Checkout endpoints
 
+### `GET /api/checkout/history/`
+
+Returns sold-items history for the currently authenticated account (retailer).
+
+Query params:
+
+| Param | Required | Type | Notes |
+|-------|----------|------|------|
+| `limit` | No | integer | Default `50`, min `1`, max `200` |
+| `customer_id` | No | UUID | Filter history for one sold customer |
+
+Response fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `count` | integer | Number of rows in this response |
+| `limit` | integer | Effective limit used by API |
+| `results` | array | List of sold items (latest first) |
+
+`results[]` item fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `id` | integer | Sold item row ID |
+| `invoice_number` | string or null | Invoice number |
+| `invoice_date` | date or null | Invoice date |
+| `payment_mode` | string | `cash`, `card`, `upi`, `cheque`, `emi` |
+| `total_amount` | decimal or null | Final billed amount |
+| `selling_datetime` | datetime | Sale timestamp |
+| `quantity` | integer | Usually `1` |
+| `customer_id` | UUID or null | Linked sold-customer ID |
+| `customer_name` | string or null | Linked sold-customer name |
+| `customer_contact` | string or null | Contact used in invoice snapshot |
+| `product_sku` | string | Product SKU |
+| `product_barcode` | string or null | Product barcode |
+| `product_brand` | string | Product brand |
+| `product_model` | string | Product model |
+| `imei_no_1` | string or null | IMEI 1 at sale time |
+| `imei_no_2` | string or null | IMEI 2 at sale time |
+| `buying_price` | decimal or null | Buying price from inventory row |
+| `msp` | decimal or null | MSP from inventory row |
+| `mrp` | decimal or null | MRP from inventory row |
+| `inventory_id` | integer or null | Source inventory row that was sold |
+| `created_at` | datetime | Record creation time |
+
+Important:
+
+- History is always account-scoped using JWT + `X-Device-Id`.
+- This endpoint is read-only and does not mutate inventory or sale records.
+
+### `GET /api/checkout/customers/`
+
+Customer list endpoint for FE dropdown search while selling.
+
+Query params:
+
+| Param | Required | Type | Notes |
+|-------|----------|------|------|
+| `search` | No | string | Search by `name`, `phone_number`, or `email` |
+| `limit` | No | integer | Default `100`, min `1`, max `200` |
+
+Response fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `count` | integer | Number of rows in this response |
+| `limit` | integer | Effective limit used by API |
+| `results` | array | Customer list for dropdown/search |
+
+`results[]` item fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `customer_id` | UUID | Sold-customer ID |
+| `name` | string | Customer name |
+| `phone_number` | string | Customer phone |
+| `email` | string | Customer email |
+| `city` | string or null | City |
+| `state` | string or null | State |
+| `purchase_count` | integer | Number of products purchased |
+| `total_spent` | decimal | Total billed amount across purchases |
+| `last_purchase_at` | datetime or null | Latest sale timestamp |
+
 ### `GET /api/checkout/customers/<uuid>/`
 
 This returns a sold-customer record by `customer_id`.
@@ -355,6 +482,49 @@ Response fields:
 | `pincode` | string or null | Postal code |
 | `created_at` | datetime | Created time |
 | `updated_at` | datetime | Updated time |
+
+### `GET /api/checkout/customers/<uuid>/history/`
+
+Returns one customer's complete purchase history.
+
+Query params:
+
+| Param | Required | Type | Notes |
+|-------|----------|------|------|
+| `limit` | No | integer | Default `100`, min `1`, max `500` |
+
+Response fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `customer` | object | `SoldCustomerSerializer` output |
+| `count` | integer | Number of rows in this response |
+| `limit` | integer | Effective limit used by API |
+| `results` | array | Sold items for that customer |
+
+### `DELETE /api/checkout/customers/<uuid>/history/`
+
+Deletes that customer's sale history entries (and customer record) for the current account.
+
+Response fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `detail` | string | Success message |
+| `customer_id` | UUID | Deleted customer id |
+| `deleted_records` | integer | Number of deleted DB records |
+
+### `GET /api/checkout/invoices/<invoice_number>/`
+
+Fetch a full invoice payload for one sale.
+
+Response fields include:
+
+- invoice metadata (`invoice_number`, `invoice_date`, `payment_mode`, `selling_datetime`)
+- customer snapshot (`customer_name`, `customer_address`, `customer_contact`, `customer_gst`)
+- product snapshot (`product_name`, `brand_name`, `model_number`, `imei_no_1`, `imei_no_2`)
+- tax/amount fields (`rate`, `amount`, `cgst_*`, `sgst_*`, `total_amount`)
+- inventory price fields (`buying_price`, `msp`, `mrp`)
 
 ### `POST /api/checkout/preview/`
 
@@ -410,35 +580,118 @@ Response fields:
 | `payment_mode` | string | Default `cash` |
 | `cheque_number` | string | Empty string |
 
-## Admin endpoints
+Important:
 
-### `POST /api/customers/`
+- `checkout/preview` is read-only. It does not create sale records.
+- To complete a sale (and move item out of active inventory), call `POST /api/checkout/complete/`.
 
-Admin only. Creates an `Account` record.
+### `POST /api/checkout/complete/`
 
-### `POST /api/customers/<uuid>/subscription/`
+This endpoint finalizes the sale in one transaction:
 
-Admin only. Request body:
+- Creates `SoldItem`
+- Creates `SoldCustomer` when `customer_id` is not provided
+- Marks `ProductInventory.sold = true` and sets `sold_datetime`
 
-| Field | Required | Allowed values |
-|-------|----------|----------------|
-| `action` | Yes | `pause`, `resume` |
+Request body fields:
 
-## Simple FE flow
+| Field | Required | Type | Notes |
+|-------|----------|------|------|
+| `inventory_id` | No | integer | Preferred way to identify item |
+| `product_barcode` | No | string | Alternate lookup |
+| `imei1` | No | string | Alternate lookup |
+| `imei2` | No | string | Alternate lookup |
+| `customer_id` | No | UUID | Existing sold customer |
+| `customer_name` | No* | string | Required when `customer_id` is not sent |
+| `customer_phone` | No | string | For new sold customer |
+| `customer_email` | No | string | For new sold customer |
+| `customer_address` | No | string | For new sold customer |
+| `customer_city` | No | string | For new sold customer |
+| `customer_state` | No | string | For new sold customer |
+| `customer_pincode` | No | string | For new sold customer |
+| `payment_mode` | No | string | `cash`, `card`, `upi`, `cheque`, `emi` |
 
-1. Sign up with `signup_temp`.
-2. Superuser sets `accounts_accountuseraccess.is_active = true` for the user-account pair.
-3. Sign in with `signin_temp`.
-4. Save `access`, `refresh`, `device_id`, and `customer.account_id` on the frontend.
-5. Scan product with `scans/ingest`.
-6. If the product is not found, open the form and send `create-from-form`.
-7. Select or fetch the sold customer with `checkout/customers/<uuid>/`.
-8. Call `checkout/preview/` to render billing.
+At least one of `inventory_id`, `product_barcode`, `imei1`, `imei2` is required.
 
-## Notes for FE devs
+Response fields:
 
-- Do not send OTP fields; they are not part of the current login flow.
-- Treat `AccountUserAccess.is_active` as the actual login approval switch.
-- Use `null` for missing `email`, `phone_number`, `imei1`, and `imei2` instead of empty strings when possible.
-- Reuse the same `device_id` on the same browser/device profile.
-- If a protected request returns `401`, refresh the token and retry.
+| Field | Type | Notes |
+|-------|------|------|
+| `sale_completed` | boolean | `true` on success |
+| `invoice_number` | string | Generated invoice id |
+| `sold_item_id` | integer | New sold item row id |
+| `inventory_id` | integer | Sold inventory row id |
+| `customer` | object | `SoldCustomerSerializer` output |
+| `message` | string | Success message |
+
+### `POST /api/products/scan-for-selling/`
+
+**Purpose:**
+- Use this endpoint in the selling flow when scanning a product to check if it is available for sale (not just for inventory add).
+- This avoids ambiguity for IMEI-less products and ensures only unsold inventory is fetched for selling.
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+- `X-Device-Id: <device_id>` (required)
+
+**Request fields:**
+| Field | Required | Type | Notes |
+|-------|----------|------|------|
+| `product_barcode` | Yes | string | Product barcode to scan |
+| `imei1` | No | string or null | Primary IMEI (if applicable) |
+| `imei2` | No | string or null | Secondary IMEI (if applicable) |
+
+**Response (if found):**
+| Field | Type | Notes |
+|-------|------|------|
+| `action` | string | `found` |
+| `product_found` | boolean | `true` |
+| `product` | object | `ProductInventorySerializer` output |
+
+**Response (if not found):**
+| Field | Type | Notes |
+|-------|------|------|
+| `action` | string | `not_found` |
+| `product_found` | boolean | `false` |
+| `message` | string | Not found message |
+
+**FE instructions:**
+- Jab selling flow me scan ho, toh yahi endpoint hit karo.
+- Agar product mil gaya toh selling flow continue karo, nahi mila toh error ya add flow dikhao.
+
+## AI Extraction (Voice/Auto Form Fill)
+
+- The backend uses OpenAI with a strict master prompt for extracting product fields from voice/text.
+- Color is always extracted at the top level (never inside specs), normalized to English title-case (e.g. "Blue", "Black").
+- For accessories, `model` is always the accessory type (e.g. "Cable", "Earphone", "Charger", etc.), never empty, and never a product number.
+- Specs only contains extra attributes (e.g. connector_type, length, wattage, ram, rom, etc.), never color/brand/model/price.
+- Connector types are normalized (e.g. "C2B", "type c to b", etc. → "Type C to B").
+- No raw transcript is ever returned in specs or any field.
+- All missing fields are listed in `missing_fields`.
+- See backend prompt for full rules and examples.
+
+### Example (Accessory):
+Input: "MI charger cable blue colour Type C to B"
+Output:
+{
+  "category": "accessories",
+  "brand": "MI",
+  "model": "Cable",
+  "color": "Blue",
+  "specs": { "connector_type": "Type C to B" },
+  ...
+}
+
+### Example (Mobile):
+Input: "Samsung Galaxy S24 black 8GB 256GB buying price 55000 mrp 79999"
+Output:
+{
+  "category": "mobile",
+  "brand": "Samsung",
+  "model": "Galaxy S24",
+  "color": "Black",
+  "specs": { "ram": "8GB", "rom": "256GB" },
+  ...
+}
+
+---

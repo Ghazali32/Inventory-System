@@ -15,6 +15,14 @@ import { ProductFormScreen } from '../screens/Product/ProductFormScreen';
 import { ProductListScreen } from '../screens/Product/ProductListScreen';
 import { ProductDetailsScreen } from '../screens/Product/ProductDetailsScreen';
 import { ProfileScreen } from '../screens/Profile/ProfileScreen';
+import { BusinessProfileFormScreen } from '../screens/Profile/BusinessProfileFormScreen';
+import { SellScanScreen } from '../screens/Checkout/SellScanScreen';
+import { CheckoutPreviewScreen } from '../screens/Checkout/CheckoutPreviewScreen';
+import { CustomerSelectScreen } from '../screens/Checkout/CustomerSelectScreen';
+import { CustomerFormScreen } from '../screens/Checkout/CustomerFormScreen';
+import { InvoiceScreen } from '../screens/Checkout/InvoiceScreen';
+import { SalesHistoryScreen } from '../screens/Checkout/SalesHistoryScreen';
+import { SaleDetailScreen } from '../screens/Checkout/SaleDetailScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -81,9 +89,17 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
+        <Stack.Screen name="BusinessProfileForm" component={BusinessProfileFormScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="ProductForm" component={ProductFormScreen} />
         <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
+        <Stack.Screen name="SellScan" component={SellScanScreen} />
+        <Stack.Screen name="CheckoutPreview" component={CheckoutPreviewScreen} />
+        <Stack.Screen name="CustomerSelect" component={CustomerSelectScreen} />
+        <Stack.Screen name="CustomerForm" component={CustomerFormScreen} />
+        <Stack.Screen name="Invoice" component={InvoiceScreen} />
+        <Stack.Screen name="SalesHistory" component={SalesHistoryScreen} />
+        <Stack.Screen name="SaleDetail" component={SaleDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

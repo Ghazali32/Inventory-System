@@ -21,6 +21,28 @@ export interface LoginPayload {
   device_name: string;
 }
 
+// ---------- Profile ----------
+
+export interface BusinessProfile {
+  shop_name: string;
+  owner_name: string;
+  shop_address: string;
+  shop_city: string;
+  shop_state: string;
+  shop_pincode: string;
+  shop_phone: string;
+  gst_registration_number?: string;
+  pan_number?: string;
+  shop_license_number?: string;
+  shop_license_expiry?: string;
+  bank_account_number?: string;
+  bank_ifsc_code?: string;
+  bank_holder_name?: string;
+  aadhar_number?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // ---------- Response shapes (matching backend exactly) ----------
 
 export interface AuthUser {
@@ -120,4 +142,33 @@ export const authAPI = {
       refresh: refreshToken,
     });
   },
+
+  // ---------- Profile ----------
+
+  /**
+   * Get Business Profile
+   * GET /api/accounts/profile/
+   */
+  async getProfile(): Promise<BusinessProfile> {
+    const response = await apiClient.get<BusinessProfile>('/api/accounts/profile/');
+    return response.data;
+  },
+
+  /**
+   * Create Business Profile
+   * POST /api/accounts/profile/
+   */
+  async createProfile(data: Partial<BusinessProfile>): Promise<BusinessProfile> {
+    const response = await apiClient.post<BusinessProfile>('/api/accounts/profile/', data);
+    return response.data;
+  },
+
+  /**
+   * Update Business Profile
+   * PUT /api/accounts/profile/
+   */
+  async updateProfile(data: Partial<BusinessProfile>): Promise<BusinessProfile> {
+    const response = await apiClient.put<BusinessProfile>('/api/accounts/profile/', data);
+    return response.data;
+  }
 };
