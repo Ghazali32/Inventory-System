@@ -46,9 +46,6 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
   const [gstNumber, setGstNumber] = useState(profileState?.gst_registration_number || '');
   const [panNumber, setPanNumber] = useState(profileState?.pan_number || '');
   const [shopLicense, setShopLicense] = useState(profileState?.shop_license_number || '');
-  const [bankAccount, setBankAccount] = useState(profileState?.bank_account_number || '');
-  const [bankIfsc, setBankIfsc] = useState(profileState?.bank_ifsc_code || '');
-  const [bankHolder, setBankHolder] = useState(profileState?.bank_holder_name || '');
   const [aadharNumber, setAadharNumber] = useState(profileState?.aadhar_number || '');
 
   useEffect(() => {
@@ -63,9 +60,6 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
       setGstNumber(profileState.gst_registration_number || '');
       setPanNumber(profileState.pan_number || '');
       setShopLicense(profileState.shop_license_number || '');
-      setBankAccount(profileState.bank_account_number || '');
-      setBankIfsc(profileState.bank_ifsc_code || '');
-      setBankHolder(profileState.bank_holder_name || '');
       setAadharNumber(profileState.aadhar_number || '');
     }
   }, [profileState]);
@@ -97,9 +91,6 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
         gst_registration_number: gstNumber.trim() || '',
         pan_number: panNumber.trim() || '',
         shop_license_number: shopLicense.trim() || '',
-        bank_account_number: bankAccount.trim() || '',
-        bank_ifsc_code: bankIfsc.trim() || '',
-        bank_holder_name: bankHolder.trim() || '',
         aadhar_number: aadharNumber.trim() || '',
       };
 
@@ -267,32 +258,7 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
             />
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Bank Details (Optional)</Text>
-            <Input
-              label="Account Holder Name"
-              placeholder="Name as per bank"
-              leftIcon="person-outline"
-              value={bankHolder}
-              onChangeText={setBankHolder}
-            />
-            <Input
-              label="Account Number"
-              placeholder="Enter account number"
-              leftIcon="wallet-outline"
-              value={bankAccount}
-              onChangeText={setBankAccount}
-              keyboardType="number-pad"
-            />
-            <Input
-              label="IFSC Code"
-              placeholder="e.g. SBIN0000123"
-              leftIcon="business-outline"
-              value={bankIfsc}
-              onChangeText={setBankIfsc}
-              autoCapitalize="characters"
-            />
-          </View>
+
 
           <Button
             title="Save Profile"

@@ -41,7 +41,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   );
 
   const totalProducts = products.length;
-  const totalQuantity = products.reduce((sum, p) => sum + p.quantity, 0);
+  const totalQuantity = products.reduce((sum, p) => sum + (p.quantity ?? 0), 0);
   const categories = [...new Set(products.map((p) => p.category))].length;
 
   const handleProductPress = (product: Product) => {

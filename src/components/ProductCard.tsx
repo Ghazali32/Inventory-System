@@ -27,34 +27,42 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={[
+        styles.card,
+        product.sold && styles.cardSold
+      ]}
       onPress={() => onPress?.(product)}
       activeOpacity={0.7}
     >
       {/* Product Icon */}
-      <View style={styles.iconContainer}>
+      <View style={[styles.iconContainer, product.sold && styles.iconContainerSold]}>
         <Ionicons
           name={getCategoryIcon(product.category)}
           size={28}
-          color={colors.primary}
+          color={product.sold ? colors.textTertiary : colors.primary}
         />
       </View>
 
       {/* Product Info */}
       <View style={styles.info}>
-        <Text style={styles.brand} numberOfLines={1}>
+        <Text style={[styles.brand, product.sold && styles.textSoldDim]} numberOfLines={1}>
           {product.brand}
         </Text>
-        <Text style={styles.model} numberOfLines={1}>
+        <Text style={[styles.model, product.sold && styles.textSoldDim]} numberOfLines={1}>
           {product.model}
         </Text>
         <View style={styles.metaRow}>
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>{product.category}</Text>
           </View>
-          {product.barcode && (
+          <View style={[styles.statusBadge, product.sold ? styles.statusBadgeSold : styles.statusBadgeInStock]}>
+            <Text style={[styles.statusText, product.sold ? styles.statusTextSold : styles.statusTextInStock]}>
+              {product.sold ? 'Sold' : 'In Stock'}
+            </Text>
+          </View>
+          {product.product_barcode && (
             <Text style={styles.barcode} numberOfLines={1}>
-              {product.barcode}
+              {product.product_barcode}
             </Text>
           )}
         </View>
@@ -62,8 +70,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Quantity Badge */}
       <View style={styles.quantityContainer}>
-        <View style={styles.quantityBadge}>
-          <Text style={styles.quantityText}>{product.quantity}</Text>
+        <View style={[styles.quantityBadge, product.sold && styles.quantityBadgeSold]}>
+          <Text style={[styles.quantityText, product.sold && styles.quantityTextSold]}>
+            {product.sold ? 0 : (product.quantity ?? 0)}
+          </Text>
         </View>
         <Text style={styles.quantityLabel}>Qty</Text>
       </View>
@@ -87,7 +97,14 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.card,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.sm,
+  },
+  cardSold: {
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceElevated,
+    opacity: 0.85,
   },
   iconContainer: {
     width: 52,
@@ -98,6 +115,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
+  iconContainerSold: {
+    backgroundColor: colors.divider,
+  },
   info: {
     flex: 1,
     marginRight: spacing.md,
@@ -105,11 +125,17 @@ const styles = StyleSheet.create({
   brand: {
     ...typography.bodyMedium,
     color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
   },
   model: {
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
+    fontSize: 14,
+  },
+  textSoldDim: {
+    color: colors.textSecondary,
   },
   metaRow: {
     flexDirection: 'row',
@@ -128,6 +154,27 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '500',
   },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  statusBadgeInStock: {
+    backgroundColor: colors.successLight,
+  },
+  statusBadgeSold: {
+    backgroundColor: colors.dangerLight,
+  },
+  statusText: {
+    ...typography.small,
+    fontWeight: '600',
+  },
+  statusTextInStock: {
+    color: colors.success,
+  },
+  statusTextSold: {
+    color: colors.danger,
+  },
   barcode: {
     ...typography.small,
     color: colors.textTertiary,
@@ -145,10 +192,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  quantityBadgeSold: {
+    backgroundColor: colors.divider,
+  },
   quantityText: {
-    ...typography.bodyMedium,
-    color: colors.text,
+    fontSize: 14,
     fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  quantityTextSold: {
+    color: colors.textSecondary,
   },
   quantityLabel: {
     ...typography.small,
