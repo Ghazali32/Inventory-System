@@ -19,6 +19,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { useProductStore } from '../../store/product.store';
 import { speechService } from '../../utils/speechRecognition';
+import { toast } from '../../store/toast.store';
 
 interface ProductFormScreenProps {
   navigation: any;
@@ -120,7 +121,7 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
     try {
       const granted = await speechService.initialize();
       if (!granted) {
-        Alert.alert('Not Available', 'Speech recognition is not available on this device.');
+        toast.warn('Speech recognition is not available on this device.', 'Not Available');
         return;
       }
 
@@ -136,7 +137,7 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       );
     } catch (error: any) {
       setIsRecording(false);
-      Alert.alert('Error', 'Failed to start speech recognition.');
+      toast.error('Failed to start speech recognition.');
     }
   };
 
@@ -149,7 +150,7 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       const transcript = await speechService.stopListening();
 
       if (!transcript.trim()) {
-        Alert.alert('No Speech Detected', 'Please try speaking again.');
+        toast.warn('Please try speaking again.', 'No Speech Detected');
         setIsProcessingVoice(false);
         return;
       }
@@ -160,7 +161,7 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       setIsProcessingVoice(false);
     } catch (error: any) {
       setIsProcessingVoice(false);
-      Alert.alert('Error', error.message || 'Failed to process speech.');
+      toast.error(error.message || 'Failed to process speech.');
     }
   };
 
@@ -211,11 +212,11 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
           setDescription((prev) => prev ? `${prev}\n${combinedDesc}` : combinedDesc);
         }
       }
-      Alert.alert('Success', 'Form fields updated from voice input!');
+      toast.success('Form fields updated from voice input!');
     } catch (error: any) {
       console.log('--- VOICE DRAFT ERROR ---');
       console.log(error);
-      Alert.alert('Error', error.message || 'Voice draft failed.');
+      toast.error(error.message || 'Voice draft failed.');
     } finally {
       setIsProcessingVoice(false);
       setConfirmationTranscript('');
@@ -232,12 +233,12 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   const handleSubmit = async () => {
     // Validation
     if (!brand.trim() || !model.trim() || !category.trim()) {
-      Alert.alert('Missing Fields', 'Brand, model, and category are required.');
+      toast.warn('Brand, model, and category are required.', 'Missing Fields');
       return;
     }
 
     if (!barcode.trim()) {
-      Alert.alert('Missing Barcode', 'Barcode is required.');
+      toast.warn('Barcode is required.', 'Missing Barcode');
       return;
     }
 
@@ -285,14 +286,10 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
         await createProduct(payload);
       }
 
-      Alert.alert('Success', mode === 'edit' ? 'Product updated successfully!' : 'Product created successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      toast.success(mode === 'edit' ? 'Product updated successfully!' : 'Product created successfully!');
+      navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Error', error.message || (mode === 'edit' ? 'Failed to update product.' : 'Failed to create product.'));
+      toast.error(error.message || (mode === 'edit' ? 'Failed to update product.' : 'Failed to create product.'));
     }
   };
 

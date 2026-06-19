@@ -143,6 +143,8 @@ Response fields:
 | `device_policy.single_active_device` | boolean | Always `true` |
 | `device_policy.active_device_id` | string | Active device ID |
 
+**Note:** There is no public forgot-password endpoint in the current flow. If a user forgets the password, the admin can reset it from the admin panel using the endpoint below.
+
 ### `GET` /api/accounts/profile/
 ### `POST` /api/accounts/profile/
 ### `PUT` /api/accounts/profile/
@@ -186,6 +188,31 @@ Response fields:
 - After signin, always call `GET /api/accounts/profile/`.
 - If profile is incomplete, show the form and submit via `POST` or `PUT`.
 - Block inventory/selling flow until profile is complete.
+
+### `POST /api/accounts/users/<uuid:user_id>/reset-password/`
+
+**Purpose:**
+- Admin-only endpoint to reset a user's password when the user contacts support.
+- The reset invalidates active JWT access versions for that user.
+
+**Headers:**
+- `Authorization: Bearer <admin_access_token>` (required)
+
+**Request fields:**
+| Field | Type | Required | Notes |
+|-------|------|----------|------|
+| `new_password` | string | Yes | Minimum 8 characters |
+
+**Response fields:**
+| Field | Type | Notes |
+|-------|------|------|
+| `detail` | string | Success message |
+| `user_id` | UUID | Reset user's id |
+| `username` | string | Reset user's username |
+
+**FE/admin instructions:**
+- Use this endpoint only from the admin side, not from the public login screen.
+- After reset, share the new password with the user through your support process.
 
 ## Inventory and product models
 
@@ -379,6 +406,35 @@ Notes:
 - Sold history is preserved because the product master is not deleted when it is still referenced by sales records.
 
 ## Checkout endpoints
+
+## Dashboard endpoint
+
+### `GET /api/dashboard/summary/`
+
+Returns a single account-scoped dashboard payload for the authenticated user.
+
+Query params:
+
+| Param | Required | Type | Notes |
+|-------|----------|------|------|
+| `period` | No | string | `7d`, `30d`, or `90d` (default `7d`) |
+
+Response fields:
+
+| Field | Type | Notes |
+|-------|------|------|
+| `inventory` | object | Inventory snapshot |
+| `sales` | object | Revenue and count metrics |
+| `sales_chart` | array | Daily revenue/count points for the selected period |
+| `top_selling` | array | Top 5 products by sales in the period |
+| `low_stock` | array | Up to 5 low-stock products |
+| `recent_activity` | array | Latest sale and restock activity |
+
+Important:
+
+- `sales_chart` always includes every day in the requested range.
+- `recent_activity` restock rows are derived from `ProductInventory.inventory_entry_datetime` because the backend does not yet keep a separate restock audit table.
+- The endpoint is protected by `Authorization` and `X-Device-Id` like the rest of the business APIs.
 
 ### `GET /api/checkout/history/`
 

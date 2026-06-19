@@ -49,7 +49,7 @@ apiClient.interceptors.request.use(
     // Log request details
     console.log('\n========== HTTP REQUEST ==========');
     console.log('Method:', config.method?.toUpperCase());
-    console.log('URL:', config.baseURL + config.url);
+    console.log('URL:', (config.baseURL || '') + (config.url || ''));
     console.log('Headers:', config.headers);
     if (config.data) {
       console.log('Data:', JSON.stringify(config.data, null, 2));

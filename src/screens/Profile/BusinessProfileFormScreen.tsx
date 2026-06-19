@@ -17,6 +17,7 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/auth.store';
 import { authAPI, BusinessProfile } from '../../api/auth.api';
+import { toast } from '../../store/toast.store';
 
 interface BusinessProfileFormScreenProps {
   navigation: any;
@@ -74,7 +75,7 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
       !shopPincode.trim() ||
       !shopPhone.trim()
     ) {
-      Alert.alert('Missing Fields', 'Please fill all required business details.');
+      toast.warn('Please fill all required business details.', 'Missing Fields');
       return;
     }
 
@@ -102,28 +103,18 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
 
       await fetchProfile();
 
-      Alert.alert(
-        'Success',
-        'Business profile saved successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (isEditMode) {
-                navigation.goBack();
-              } else {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'MainTabs' }],
-                });
-              }
-            },
-          },
-        ]
-      );
+      toast.success('Business profile saved successfully!');
+      if (isEditMode) {
+        navigation.goBack();
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }
     } catch (error: any) {
       console.log('Profile Submit Error:', error);
-      Alert.alert('Error', error.message || 'Failed to save business profile.');
+      toast.error(error.message || 'Failed to save business profile.');
     } finally {
       setIsLoading(false);
     }

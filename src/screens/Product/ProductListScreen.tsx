@@ -10,11 +10,19 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../theme'
 import { ProductCard } from '../../components/ProductCard';
 import { useProductStore } from '../../store/product.store';
 import { Product } from '../../api/product.api';
+import { toast } from '../../store/toast.store';
 
 export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) => {
-  const { products, isLoading, fetchProducts } = useProductStore();
+  const { products, isLoading, fetchProducts, error, clearError } = useProductStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      clearError();
+    }
+  }, [error]);
 
   useFocusEffect(useCallback(() => { fetchProducts(); }, []));
 

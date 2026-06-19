@@ -38,11 +38,11 @@ export const ProfileScreen: React.FC<{navigation: any}> = ({ navigation }) => {
       <View style={styles.userCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+            {user?.username?.charAt(0)?.toUpperCase() || 'U'}
           </Text>
         </View>
         <View style={styles.userInfo}>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <Text style={styles.userName}>{user?.username || 'User'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
         </View>
         <TouchableOpacity>

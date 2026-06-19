@@ -17,6 +17,8 @@ import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/auth.store';
 import { SignupResponse } from '../../api/auth.api';
+import { formatErrorMessage } from '../../utils/errorParser';
+import { toast } from '../../store/toast.store';
 
 interface SignupScreenProps {
   navigation: any;
@@ -36,20 +38,20 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
 
   const validateStep1 = (): boolean => {
     if (!username.trim() || !email.trim() || !password || !confirmPassword) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      toast.warn('Please fill in all fields.', 'Missing Fields');
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      toast.warn('Please enter a valid email address.', 'Invalid Email');
       return false;
     }
     if (password.length < 8) {
-      Alert.alert('Weak Password', 'Password must be at least 8 characters long.');
+      toast.warn('Password must be at least 8 characters long.', 'Weak Password');
       return false;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match.');
+      toast.warn('Passwords do not match.', 'Password Mismatch');
       return false;
     }
     return true;
@@ -57,11 +59,11 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
 
   const validateStep2 = (): boolean => {
     if (!accountName.trim() || !phoneNumber.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      toast.warn('Please fill in all fields.', 'Missing Fields');
       return false;
     }
     if (phoneNumber.trim().length < 10) {
-      Alert.alert('Invalid Phone', 'Please enter a valid 10-digit phone number.');
+      toast.warn('Please enter a valid 10-digit phone number.', 'Invalid Phone');
       return false;
     }
     return true;
@@ -165,9 +167,11 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
           {/* Error Banner */}
           {error && (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={18} color={colors.danger} />
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity onPress={clearError}>
+              <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.errorText}>{formatErrorMessage(error)}</Text>
+              </View>
+              <TouchableOpacity onPress={clearError} style={styles.errorCloseBtn}>
                 <Ionicons name="close" size={18} color={colors.danger} />
               </TouchableOpacity>
             </View>
@@ -248,7 +252,7 @@ export const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
                 onPress={handleSignup}
                 size="lg"
                 style={styles.actionBtn}
-                isLoading={isLoading}
+                loading={isLoading}
               />
             </View>
           )}
@@ -362,13 +366,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerLight,
     padding: spacing.md,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
     marginBottom: spacing.xl,
     gap: spacing.sm,
   },
   errorText: {
-    ...typography.caption,
-    color: colors.danger,
+    ...typography.captionMedium,
+    color: '#991B1B',
+    lineHeight: 18,
     flex: 1,
+  },
+  errorCloseBtn: {
+    padding: spacing.xs,
   },
   form: {
     marginBottom: spacing.xl,

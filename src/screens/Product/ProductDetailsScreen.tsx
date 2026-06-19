@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { Product } from '../../api/product.api';
 import { useProductStore } from '../../store/product.store';
+import { toast } from '../../store/toast.store';
 
 interface ProductDetailsScreenProps {
   navigation: any;
@@ -84,11 +85,10 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
             try {
               setIsDeleting(true);
               await deleteProduct(product.id);
-              Alert.alert('Success', 'Product deleted successfully', [
-                { text: 'OK', onPress: () => navigation.goBack() },
-              ]);
+              toast.success('Product deleted successfully');
+              navigation.goBack();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete product');
+              toast.error(error.message || 'Failed to delete product');
             } finally {
               setIsDeleting(false);
             }

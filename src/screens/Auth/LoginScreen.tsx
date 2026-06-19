@@ -16,6 +16,8 @@ import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
 import { useAuthStore } from '../../store/auth.store';
+import { formatErrorMessage } from '../../utils/errorParser';
+import { toast } from '../../store/toast.store';
 
 interface LoginScreenProps {
   navigation: any;
@@ -28,7 +30,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Missing Fields', 'Please fill in all fields.');
+      toast.warn('Please fill in all fields.', 'Missing Fields');
       return;
     }
 
@@ -71,9 +73,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           {/* Error Banner */}
           {error && (
             <View style={styles.errorBanner}>
-              <Ionicons name="alert-circle" size={18} color={colors.danger} />
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity onPress={clearError}>
+              <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.errorText}>{formatErrorMessage(error)}</Text>
+              </View>
+              <TouchableOpacity onPress={clearError} style={styles.errorCloseBtn}>
                 <Ionicons name="close" size={18} color={colors.danger} />
               </TouchableOpacity>
             </View>
@@ -175,13 +179,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerLight,
     padding: spacing.md,
     borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
     marginBottom: spacing.xl,
     gap: spacing.sm,
   },
   errorText: {
-    ...typography.caption,
-    color: colors.danger,
+    ...typography.captionMedium,
+    color: '#991B1B',
+    lineHeight: 18,
     flex: 1,
+  },
+  errorCloseBtn: {
+    padding: spacing.xs,
   },
   form: {
     marginBottom: spacing.xl,

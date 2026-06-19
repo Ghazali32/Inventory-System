@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useProductStore } from '../../store/product.store';
+import { toast } from '../../store/toast.store';
 
 interface ScanScreenProps {
   navigation: any;
@@ -109,7 +110,7 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation, route }) => 
   // ─── Process scanned data ────────────────────────────────────────────────
   const handleProceed = async () => {
     if (!scannedBarcode) {
-      Alert.alert('Missing Data', 'Please scan a barcode first.');
+      toast.warn('Please scan a barcode first.', 'Missing Data');
       return;
     }
 
@@ -176,10 +177,7 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation, route }) => 
         );
       } else if (result.action === 'not_found' && result.form_required) {
         // Product not found, open creation form with prefill
-        Alert.alert(
-          '📝 Product Not Found',
-          'Opening form to create new product...'
-        );
+        toast.info('Opening form to create new product...', 'Product Not Found');
         navigation.navigate('ProductForm', {
           mode: 'create',
           barcode: scannedBarcode,
@@ -188,7 +186,7 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation, route }) => 
           prefill: result.prefill || {},
         });
       } else {
-        Alert.alert('Error', result.message || 'Failed to process scan.');
+        toast.error(result.message || 'Failed to process scan.');
       }
     } catch (error: any) {
       console.log('\n========== SCAN INGEST ERROR ==========');
@@ -197,9 +195,9 @@ export const ScanScreen: React.FC<ScanScreenProps> = ({ navigation, route }) => 
       console.log('Full Error Object:', JSON.stringify(error, null, 2));
 
       if (error.message?.includes('409') || error.message?.includes('already')) {
-        Alert.alert('Duplicate', 'This IMEI is already saved.');
+        toast.error('This IMEI is already saved.', 'Duplicate');
       } else {
-        Alert.alert('Error', error.message || 'Failed to process scan.');
+        toast.error(error.message || 'Failed to process scan.');
       }
     } finally {
       setIsProcessing(false);

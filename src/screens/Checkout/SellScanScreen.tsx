@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { useProductStore } from '../../store/product.store';
+import { toast } from '../../store/toast.store';
 
 interface SellScanScreenProps {
   navigation: any;
@@ -76,7 +77,7 @@ export const SellScanScreen: React.FC<SellScanScreenProps> = ({ navigation }) =>
 
   const handleProceed = async () => {
     if (!scannedBarcode) {
-      Alert.alert('Missing Data', 'Please scan a barcode first.');
+      toast.warn('Please scan a barcode first.', 'Missing Data');
       return;
     }
 
@@ -92,17 +93,11 @@ export const SellScanScreen: React.FC<SellScanScreenProps> = ({ navigation }) =>
       if (result.product_found && result.product) {
         navigation.navigate('CheckoutPreview', { product: result.product });
       } else {
-        Alert.alert(
-          '❌ Not Found',
-          result.message || 'This product is not in your inventory.',
-          [
-            { text: 'Scan Again', onPress: resetScanner },
-            { text: 'OK' },
-          ]
-        );
+        toast.warn(result.message || 'This product is not in your inventory.', 'Product Not Found');
+        resetScanner();
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to find product.');
+      toast.error(error.message || 'Failed to find product.');
     } finally {
       setIsProcessing(false);
     }

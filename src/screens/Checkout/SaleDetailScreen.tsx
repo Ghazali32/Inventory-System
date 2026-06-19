@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { SoldItemHistory } from '../../api/product.api';
 import { useProductStore } from '../../store/product.store';
+import { toast } from '../../store/toast.store';
 
 interface SaleDetailScreenProps {
   navigation: any;
@@ -84,7 +85,7 @@ export const SaleDetailScreen: React.FC<SaleDetailScreenProps> = ({
 
   const handleViewInvoice = async () => {
     if (!sale.invoice_number) {
-      Alert.alert('Error', 'Invoice number is not available for this sale.');
+      toast.error('Invoice number is not available for this sale.');
       return;
     }
 
@@ -100,7 +101,7 @@ export const SaleDetailScreen: React.FC<SaleDetailScreenProps> = ({
       });
     } catch (err: any) {
       console.error('Error fetching invoice:', err);
-      Alert.alert('Error', err.message || 'Failed to fetch invoice details.');
+      toast.error(err.message || 'Failed to fetch invoice details.');
     } finally {
       setLoadingInvoice(false);
     }

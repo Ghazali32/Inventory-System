@@ -16,6 +16,7 @@ import * as Sharing from 'expo-sharing';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { BillingDetails, Product } from '../../api/product.api';
 import { useAuthStore } from '../../store/auth.store';
+import { toast } from '../../store/toast.store';
 
 interface InvoiceScreenProps {
   navigation: any;
@@ -429,9 +430,9 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
     try {
       const html = generateInvoiceHTML(finalBilling, profile, customer);
       const { uri } = await Print.printToFileAsync({ html });
-      Alert.alert('✅ PDF Saved', `Invoice saved to:\n${uri}`);
+      toast.success('Invoice PDF saved successfully.', 'PDF Saved');
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to save PDF.');
+      toast.error('Failed to save PDF.');
     } finally {
       setIsSaving(false);
     }
@@ -450,10 +451,10 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Not Available', 'Sharing is not available on this device.');
+        toast.warn('Sharing is not available on this device.', 'Not Available');
       }
     } catch (error: any) {
-      Alert.alert('Error', 'Failed to share invoice.');
+      toast.error('Failed to share invoice.');
     } finally {
       setIsSharing(false);
     }

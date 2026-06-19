@@ -18,6 +18,7 @@ import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useProductStore } from '../../store/product.store';
 import { Product } from '../../api/product.api';
+import { toast } from '../../store/toast.store';
 
 interface CustomerFormScreenProps {
   navigation: any;
@@ -65,7 +66,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
 
   const handleLookupCustomer = async () => {
     if (!customerId.trim()) {
-      Alert.alert('Missing ID', 'Please enter a customer ID.');
+      toast.warn('Please enter a customer ID.', 'Missing ID');
       return;
     }
 
@@ -86,10 +87,10 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         setState(result.customer.state || '');
         setPincode(result.customer.pincode || '');
         setShowLookup(false);
-        Alert.alert('✅ Customer Found', `Loaded details for ${result.customer.name}`);
+        toast.success(`Loaded details for ${result.customer.name}`, 'Customer Found');
       }
     } catch (error: any) {
-      Alert.alert('Not Found', error.message || 'Customer not found.');
+      toast.error(error.message || 'Customer not found.', 'Not Found');
     } finally {
       setIsLookingUp(false);
     }
@@ -97,7 +98,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
 
   const handleProceed = async () => {
     if (!name.trim()) {
-      Alert.alert('Required Field', 'Customer name is required.');
+      toast.warn('Customer name is required.', 'Required Field');
       return;
     }
 
@@ -121,7 +122,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
       });
 
       if (!completeResult.sale_completed) {
-        Alert.alert('Error', completeResult.message || 'Sale could not be completed.');
+        toast.error(completeResult.message || 'Sale could not be completed.');
         return;
       }
 
@@ -185,7 +186,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         });
       }
     } catch (error: any) {
-      Alert.alert('Checkout Failed', error.message || 'Failed to complete the sale.');
+      toast.error(error.message || 'Failed to complete the sale.', 'Checkout Failed');
     }
   };
 

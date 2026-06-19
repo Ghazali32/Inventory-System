@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { useProductStore } from '../../store/product.store';
 import { Product, SearchCustomerResult, productAPI } from '../../api/product.api';
+import { toast } from '../../store/toast.store';
 
 interface CustomerSelectScreenProps {
   navigation: any;
@@ -41,7 +42,7 @@ export const CustomerSelectScreen: React.FC<CustomerSelectScreenProps> = ({
       setCustomers(response.results || []);
     } catch (error: any) {
       console.error('Failed to search customers:', error);
-      Alert.alert('Error', 'Failed to retrieve previous customers.');
+      toast.error('Failed to retrieve previous customers.');
     } finally {
       setLoading(false);
     }
