@@ -158,7 +158,7 @@ export const CustomerSelectScreen: React.FC<CustomerSelectScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}

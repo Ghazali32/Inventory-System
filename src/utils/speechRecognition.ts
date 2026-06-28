@@ -7,7 +7,22 @@ export interface SpeechResult {
 }
 
 
-const recognition = new ExpoWebSpeechRecognition();
+let recognition: any;
+try {
+  recognition = new ExpoWebSpeechRecognition();
+} catch (e) {
+  console.warn('Speech recognition native module not found. Falling back to mock.');
+  recognition = {
+    start: () => console.warn('Speech recognition: start() called but module not available'),
+    stop: () => console.warn('Speech recognition: stop() called but module not available'),
+    onresult: null,
+    onerror: null,
+    onend: null,
+    lang: 'en-US',
+    continuous: true,
+    interimResults: true,
+  };
+}
 
 export class SpeechRecognitionService {
   private isListening = false;

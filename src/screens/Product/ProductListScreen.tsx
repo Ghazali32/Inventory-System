@@ -9,13 +9,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { ProductCard } from '../../components/ProductCard';
 import { useProductStore } from '../../store/product.store';
-import { Product } from '../../api/product.api';
 import { toast } from '../../store/toast.store';
+
+type StockTab = 'stock' | 'sold';
 
 export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) => {
   const { products, isLoading, fetchProducts, error, clearError } = useProductStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<StockTab>('stock');
 
   useEffect(() => {
     if (error) {
@@ -26,15 +28,23 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
 
   useFocusEffect(useCallback(() => { fetchProducts(); }, []));
 
-  const categories = [...new Set(products.map((p) => p.category))];
-  const filteredProducts = products.filter((p) => {
+  // Separate stock vs sold
+  const stockProducts = products.filter((p) => !p.sold);
+  const soldProducts = products.filter((p) => p.sold);
+  const activeProducts = activeTab === 'stock' ? stockProducts : soldProducts;
+
+  const categories = [...new Set(activeProducts.map((p) => p.category).filter(Boolean))];
+  const filteredProducts = activeProducts.filter((p) => {
     const q = searchQuery.toLowerCase();
-    const matchesSearch = !q || p.brand.toLowerCase().includes(q) || p.model.toLowerCase().includes(q) || p.product_barcode.toLowerCase().includes(q);
+    const matchesSearch = !q ||
+      (p.brand || '').toLowerCase().includes(q) ||
+      (p.model || '').toLowerCase().includes(q) ||
+      (p.product_barcode || '').toLowerCase().includes(q);
     return matchesSearch && (!selectedCategory || p.category === selectedCategory);
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Products</Text>
@@ -42,13 +52,55 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
           <Ionicons name="add" size={24} color={colors.textInverse} />
         </TouchableOpacity>
       </View>
+
+      {/* Stock / Sold Tab Bar */}
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'stock' && styles.tabActive]}
+          onPress={() => { setActiveTab('stock'); setSelectedCategory(null); }}
+        >
+          <Ionicons
+            name="cube-outline"
+            size={15}
+            color={activeTab === 'stock' ? colors.textInverse : colors.textSecondary}
+          />
+          <Text style={[styles.tabText, activeTab === 'stock' && styles.tabTextActive]}>
+            In Stock ({stockProducts.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'sold' && styles.tabSoldActive]}
+          onPress={() => { setActiveTab('sold'); setSelectedCategory(null); }}
+        >
+          <Ionicons
+            name="pricetag-outline"
+            size={15}
+            color={activeTab === 'sold' ? colors.textInverse : colors.textSecondary}
+          />
+          <Text style={[styles.tabText, activeTab === 'sold' && styles.tabTextActive]}>
+            Sold ({soldProducts.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
-          <TextInput style={styles.searchInput} placeholder="Search products..." placeholderTextColor={colors.textTertiary} value={searchQuery} onChangeText={setSearchQuery} />
-          {searchQuery.length > 0 && <TouchableOpacity onPress={() => setSearchQuery('')}><Ionicons name="close-circle" size={20} color={colors.textTertiary} /></TouchableOpacity>}
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor={colors.textTertiary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+
       {categories.length > 0 && (
         <FlatList
           data={[null, ...categories]}
@@ -61,14 +113,14 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
             <TouchableOpacity
               style={[
                 styles.categoryChip,
-                (item === null ? !selectedCategory : item === selectedCategory) && styles.categoryChipActive
+                (item === null ? !selectedCategory : item === selectedCategory) && styles.categoryChipActive,
               ]}
               onPress={() => setSelectedCategory(item)}
             >
               <Text
                 style={[
                   styles.categoryChipText,
-                  (item === null ? !selectedCategory : item === selectedCategory) && styles.categoryChipTextActive
+                  (item === null ? !selectedCategory : item === selectedCategory) && styles.categoryChipTextActive,
                 ]}
               >
                 {item || 'All'}
@@ -77,29 +129,114 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
           )}
         />
       )}
-      <Text style={styles.resultsText}>{filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}</Text>
-      <FlatList data={filteredProducts} keyExtractor={(item) => String(item.id)} renderItem={({ item }) => <ProductCard product={item} onPress={(p) => navigation.navigate('ProductDetails', { product: p })} />} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchProducts} tintColor={colors.primary} />} ListEmptyComponent={
-        <View style={styles.emptyState}><Ionicons name="search-outline" size={48} color={colors.textTertiary} /><Text style={styles.emptyTitle}>{searchQuery ? 'No results' : 'No products'}</Text></View>
-      } />
+
+      <Text style={styles.resultsText}>
+        {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
+      </Text>
+
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item }) => (
+          <ProductCard
+            product={item}
+            onPress={(p) => navigation.navigate('ProductDetails', { product: p })}
+            onSellPress={!item.sold ? (p) => navigation.navigate('CheckoutPreview', { product: p }) : undefined}
+          />
+        )}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchProducts} tintColor={colors.primary} />}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
+            <Text style={styles.emptyTitle}>
+              {searchQuery ? 'No results' : activeTab === 'stock' ? 'No items in stock' : 'No sold items'}
+            </Text>
+          </View>
+        }
+      />
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.xl, paddingVertical: spacing.lg },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+  },
   headerTitle: { ...typography.heading2, color: colors.text },
-  addBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.sm },
+  addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.xl,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: 4,
+    ...shadows.sm,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  tabActive: { backgroundColor: colors.primary },
+  tabSoldActive: { backgroundColor: '#F59E0B' },
+  tabText: { ...typography.captionMedium, color: colors.textSecondary, fontWeight: '600' },
+  tabTextActive: { color: colors.textInverse },
   searchContainer: { paddingHorizontal: spacing.xl, marginBottom: spacing.md },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.input, padding: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.md, ...shadows.sm },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.input,
+    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
+    ...shadows.sm,
+  },
   searchInput: { flex: 1, ...typography.body, color: colors.text },
   categoriesFlatList: { flexGrow: 0, marginBottom: spacing.xs },
-  categoriesList: { paddingHorizontal: spacing.xl, gap: spacing.sm, alignItems: 'center', paddingVertical: spacing.xs },
-  categoryChip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: borderRadius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  categoriesList: {
+    paddingHorizontal: spacing.xl,
+    gap: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  categoryChip: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   categoryChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   categoryChipText: { ...typography.captionMedium, color: colors.textSecondary },
   categoryChipTextActive: { color: colors.textInverse },
-  resultsText: { ...typography.caption, color: colors.textSecondary, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm },
+  resultsText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.sm,
+  },
   listContent: { paddingHorizontal: spacing.xl, paddingBottom: spacing['4xl'] },
   emptyState: { alignItems: 'center', paddingVertical: spacing['4xl'] },
   emptyTitle: { ...typography.subtitle, color: colors.text, marginTop: spacing.lg },

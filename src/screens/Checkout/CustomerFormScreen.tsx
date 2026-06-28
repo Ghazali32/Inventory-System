@@ -20,6 +20,41 @@ import { useProductStore } from '../../store/product.store';
 import { Product } from '../../api/product.api';
 import { toast } from '../../store/toast.store';
 
+const resolveGSTFields = (product: Product, rateVal: number) => {
+  const gstPercent = product.gst != null ? Number(product.gst) : 
+    (product.category?.toLowerCase().includes('electro') ||
+     product.category?.toLowerCase().includes('phone') ||
+     product.category?.toLowerCase().includes('mobile') ||
+     product.category?.toLowerCase().includes('laptop') ||
+     product.category?.toLowerCase().includes('tablet') ||
+     product.category?.toLowerCase().includes('smart') ||
+     product.category?.toLowerCase().includes('access')) ? 18 : 0;
+  
+  if (gstPercent > 0) {
+    const baseAmount = rateVal / (1 + gstPercent / 100);
+    const gstAmount = rateVal - baseAmount;
+    return {
+      gst_percent: String(gstPercent),
+      gst_amount: gstAmount.toFixed(2),
+      base_amount: baseAmount.toFixed(2),
+      cgst_percent: String(gstPercent / 2),
+      cgst_amount: (gstAmount / 2).toFixed(2),
+      sgst_percent: String(gstPercent / 2),
+      sgst_amount: (gstAmount / 2).toFixed(2),
+    };
+  }
+  
+  return {
+    gst_percent: '0',
+    gst_amount: '0',
+    base_amount: String(rateVal),
+    cgst_percent: '0',
+    cgst_amount: '0',
+    sgst_percent: '0',
+    sgst_amount: '0',
+  };
+};
+
 interface CustomerFormScreenProps {
   navigation: any;
   route: any;
@@ -126,6 +161,9 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         return;
       }
 
+      const rateVal = Number(previewResult.billing_details?.rate || product.mrp || product.msp || 0);
+      const computedGst = resolveGSTFields(product, rateVal);
+
       // Step 3: Build billing details with real invoice number
       if (previewResult.billing_details) {
         const billingDetails = {
@@ -134,6 +172,27 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
           customer_name: name.trim(),
           customer_address: [address, city, state, pincode].filter(Boolean).join(', '),
           customer_contact: phone.trim(),
+          base_amount: previewResult.billing_details.base_amount && Number(previewResult.billing_details.gst_amount) > 0
+            ? previewResult.billing_details.base_amount 
+            : computedGst.base_amount,
+          gst_percent: previewResult.billing_details.gst_percent && Number(previewResult.billing_details.gst_amount) > 0
+            ? previewResult.billing_details.gst_percent 
+            : computedGst.gst_percent,
+          gst_amount: previewResult.billing_details.gst_amount && Number(previewResult.billing_details.gst_amount) > 0
+            ? previewResult.billing_details.gst_amount 
+            : computedGst.gst_amount,
+          cgst_percent: previewResult.billing_details.cgst_percent && Number(previewResult.billing_details.cgst_amount) > 0
+            ? previewResult.billing_details.cgst_percent 
+            : computedGst.cgst_percent,
+          cgst_amount: previewResult.billing_details.cgst_amount && Number(previewResult.billing_details.cgst_amount) > 0
+            ? previewResult.billing_details.cgst_amount 
+            : computedGst.cgst_amount,
+          sgst_percent: previewResult.billing_details.sgst_percent && Number(previewResult.billing_details.sgst_amount) > 0
+            ? previewResult.billing_details.sgst_percent 
+            : computedGst.sgst_percent,
+          sgst_amount: previewResult.billing_details.sgst_amount && Number(previewResult.billing_details.sgst_amount) > 0
+            ? previewResult.billing_details.sgst_amount 
+            : computedGst.sgst_amount,
         };
 
         navigation.navigate('Invoice', {
@@ -171,15 +230,12 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
             serial_number: '',
             hsn_sac: '',
             quantity: 1,
-            rate: String(product.mrp || product.msp || 0),
-            amount: String(product.mrp || product.msp || 0),
-            cgst_percent: '0',
-            cgst_amount: '0',
-            sgst_percent: '0',
-            sgst_amount: '0',
-            total_amount: String(product.mrp || product.msp || 0),
+            rate: String(rateVal),
+            amount: String(rateVal),
+            total_amount: String(rateVal),
             payment_mode: 'cash',
             cheque_number: '',
+            ...computedGst,
           },
           customer: completeResult.customer,
           invoiceNumber: completeResult.invoice_number,
@@ -191,7 +247,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}

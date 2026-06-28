@@ -17,6 +17,11 @@ import {
   CustomerListResponse,
 } from '../api/product.api';
 
+const normalizeProduct = (product: Product): Product => ({
+  ...product,
+  quantity: product.quantity ?? (product.sold ? 0 : 1),
+});
+
 interface ProductState {
   products: Product[];
   salesHistory: SoldItemHistory[];
@@ -25,6 +30,7 @@ interface ProductState {
   lastScanResult: ScanIngestResponse | null;
 
   fetchProducts: () => Promise<void>;
+  fetchProductDetail: (productId: number) => Promise<Product>;
   addProduct: (product: Product) => void;
   updateProductQuantity: (productId: string, newQuantity: number) => void;
   ingestScan: (
@@ -73,7 +79,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     console.log('🔵 [STORE] fetchProducts - Starting');
     try {
       console.log('📤 [STORE] Calling productAPI.getProducts()');
-      const products = await productAPI.getProducts();
+      const products = (await productAPI.getProducts()).map(normalizeProduct);
       console.log('✅ [STORE] fetchProducts Success');
       console.log('📦 Products count:', products.length);
       set({ products, isLoading: false });
@@ -92,9 +98,45 @@ export const useProductStore = create<ProductState>((set, get) => ({
     }
   },
 
+  fetchProductDetail: async (productId: number) => {
+    // Don't set global loading/error for background detail fetches
+    console.log('🔵 [STORE] fetchProductDetail - Starting, ID:', productId);
+    try {
+      console.log('📤 [STORE] Calling productAPI.getProduct()');
+      const product = await productAPI.getProduct(productId);
+      const normalized = normalizeProduct(product);
+      
+      // Update or add in local state
+      set((state) => {
+        const exists = state.products.some((p) => p.id === productId);
+        const newProducts = exists
+          ? state.products.map((p) => (p.id === productId ? normalized : p))
+          : [normalized, ...state.products];
+        return { products: newProducts };
+      });
+      
+      console.log('✅ [STORE] fetchProductDetail Success');
+      return normalized;
+    } catch (error: any) {
+      console.warn('⚠️ [STORE] fetchProductDetail failed (404 or no detail endpoint), falling back to list fetch');
+      // If 404, the detail endpoint doesn't exist — fall back to list
+      if (error.response?.status === 404 || error.response?.status === undefined) {
+        try {
+          const products = (await productAPI.getProducts()).map(normalizeProduct);
+          set({ products });
+          const found = products.find((p) => p.id === productId);
+          if (found) return found;
+        } catch (fallbackErr) {
+          console.warn('⚠️ [STORE] Fallback list fetch also failed');
+        }
+      }
+      throw new Error('Product not found');
+    }
+  },
+
   addProduct: (product: Product) => {
     set((state) => ({
-      products: [product, ...state.products],
+      products: [normalizeProduct(product), ...state.products],
     }));
   },
 
@@ -252,7 +294,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       if (result.action === 'quantity_increased') {
         console.log('🔄 [STORE] Quantity increased, updating local state');
-        get().updateProductQuantity(String(product.id), product.quantity ?? 1);
+        const existing = get().products.find((p) => p.id === product.id);
+        if (existing) {
+          get().updateProductQuantity(String(product.id), product.quantity ?? existing.quantity ?? 1);
+        } else {
+          get().addProduct(product);
+        }
       } else {
         console.log('➕ [STORE] Product created, adding to state');
         get().addProduct(product);
@@ -305,7 +352,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
 
       const updated = result.product;
       set((state) => ({
-        products: state.products.map((p) => (p.id === updated.id ? updated : p)),
+        products: state.products.map((p) => (p.id === updated.id ? normalizeProduct(updated) : p)),
         isLoading: false,
       }));
 

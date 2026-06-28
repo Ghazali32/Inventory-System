@@ -216,6 +216,23 @@ Response fields:
 
 ## Inventory and product models
 
+### GST rule table
+
+The backend now stores category-based GST rules in `products_productgstrule`.
+
+| Field | Type | Notes |
+|-------|------|------|
+| `product_category` | string | Category name used for GST lookup |
+| `gst` | decimal | GST percent, e.g. `18.00` |
+| `start_date` | date | Rule start date |
+| `end_date` | date or null | Rule end date, `null` means active |
+
+Important:
+
+- Electronics currently use `18% GST`.
+- Frontend should not calculate GST manually for product display.
+- Use the inventory response fields `mop_including_gst`, `mop_excluding_gst`, `gst_label`, and `price_breakdown`.
+
 ### `products_productmaster`
 
 This is the shared product catalog.
@@ -254,7 +271,11 @@ Each row represents one physical stock item.
 | `buying_price` | decimal or null | No | Cost price |
 | `msp` | decimal or null | No | Minimum selling price |
 | `mrp` | decimal or null | No | Maximum retail price |
-| `gst` | decimal or null | No | GST percent |
+| `gst` | decimal or null | No | GST percent fallback; backend resolves display GST from category rule table |
+| `mop_including_gst` | decimal/string | Read only | Full MOP shown to FE |
+| `mop_excluding_gst` | decimal/string | Read only | Base amount before GST |
+| `gst_label` | string | Read only | Example: `including 18% GST` |
+| `price_breakdown` | object | Read only | Contains base amount, GST amount, CGST, and SGST |
 | `sold` | boolean | Read only | Sale flag |
 | `sold_datetime` | datetime or null | Read only | Sale timestamp |
 | `inventory_entry_datetime` | datetime | Read only | Entry timestamp |
@@ -340,7 +361,7 @@ Request body fields:
 | `buying_price` | No | decimal | Cost price |
 | `msp` | No | decimal | Minimum selling price |
 | `mrp` | No | decimal | Maximum retail price |
-| `gst` | No | decimal | GST percent |
+| `gst` | No | decimal | Optional fallback GST percent; category rule table is used for display and billing |
 
 Notes:
 
@@ -376,7 +397,7 @@ Request body fields:
 | `buying_price` | No | decimal | Cost price |
 | `msp` | No | decimal | Minimum selling price |
 | `mrp` | No | decimal | Maximum retail price |
-| `gst` | No | decimal | GST percent |
+| `gst` | No | decimal | Optional fallback GST percent; category rule table is used for display and billing |
 
 Response:
 
@@ -628,6 +649,9 @@ Response fields:
 | `quantity` | integer | Always `1` |
 | `rate` | string | Price used for billing |
 | `amount` | string | Same as rate for quantity 1 |
+| `base_amount` | string | Price before GST split |
+| `gst_percent` | string | Total GST percent from category rule table |
+| `gst_amount` | string | Total GST amount included in rate |
 | `cgst_percent` | string | Half of GST percent |
 | `cgst_amount` | string | Half of GST amount |
 | `sgst_percent` | string | Half of GST percent |
@@ -640,6 +664,8 @@ Important:
 
 - `checkout/preview` is read-only. It does not create sale records.
 - To complete a sale (and move item out of active inventory), call `POST /api/checkout/complete/`.
+- For product display and checkout, treat MOP as GST-inclusive and use `mop_including_gst`, `mop_excluding_gst`, `gst_label`, and `price_breakdown` from the inventory serializer.
+- For electronics, the current GST rule is 18% and the split should be shown as CGST + SGST.
 
 ### `POST /api/checkout/complete/`
 

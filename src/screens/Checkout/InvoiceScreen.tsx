@@ -355,8 +355,12 @@ const generateInvoiceHTML = (
         <div class="summary-section">
           <div class="summary-box">
             <div class="summary-row">
-              <span class="summary-label">Subtotal</span>
-              <span class="summary-value">₹${Number(billing.amount).toLocaleString('en-IN')}</span>
+              <span class="summary-label">Base Amount</span>
+              <span class="summary-value">₹${Number(billing.base_amount || billing.amount).toLocaleString('en-IN')}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">GST (${billing.gst_percent || '0'}%)</span>
+              <span class="summary-value">₹${Number(billing.gst_amount || 0).toLocaleString('en-IN')}</span>
             </div>
             ${Number(billing.cgst_amount) > 0
       ? `<div class="summary-row">
@@ -465,7 +469,7 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
@@ -559,7 +563,8 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
           <View style={styles.invoiceSection}>
             <Text style={styles.invoiceSectionLabel}>PRICING</Text>
             <PriceRow label="Rate" value={`₹${Number(finalBilling.rate).toLocaleString('en-IN')}`} />
-            <PriceRow label="Amount" value={`₹${Number(finalBilling.amount).toLocaleString('en-IN')}`} />
+            <PriceRow label="Base Amount" value={`₹${Number(finalBilling.base_amount || finalBilling.amount).toLocaleString('en-IN')}`} />
+            <PriceRow label={`GST (${finalBilling.gst_percent || '0'}%)`} value={`₹${Number(finalBilling.gst_amount || 0).toLocaleString('en-IN')}`} />
             {Number(finalBilling.cgst_amount) > 0 && (
               <PriceRow
                 label={`CGST (${finalBilling.cgst_percent}%)`}
@@ -581,6 +586,26 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
               ₹{Number(finalBilling.total_amount).toLocaleString('en-IN')}
             </Text>
           </View>
+
+          {Number(finalBilling.gst_percent) > 0 && (
+            <View style={styles.breakdownCard}>
+              <Text style={styles.breakdownTitle}>GST Breakdown</Text>
+              <PriceRow label="Base Amount" value={`₹${Number(finalBilling.base_amount).toLocaleString('en-IN')}`} />
+              <PriceRow label={`GST (${finalBilling.gst_percent}%)`} value={`₹${Number(finalBilling.gst_amount).toLocaleString('en-IN')}`} />
+              {Number(finalBilling.cgst_amount) > 0 && (
+                <PriceRow
+                  label={`CGST (${finalBilling.cgst_percent}%)`}
+                  value={`₹${Number(finalBilling.cgst_amount).toLocaleString('en-IN')}`}
+                />
+              )}
+              {Number(finalBilling.sgst_amount) > 0 && (
+                <PriceRow
+                  label={`SGST (${finalBilling.sgst_percent}%)`}
+                  value={`₹${Number(finalBilling.sgst_amount).toLocaleString('en-IN')}`}
+                />
+              )}
+            </View>
+          )}
 
           {/* Payment Mode */}
           <View style={styles.paymentRow}>
@@ -707,6 +732,21 @@ const styles = StyleSheet.create({
     padding: spacing.lg, justifyContent: 'center',
   },
   paymentText: { ...typography.captionMedium, color: colors.success, fontWeight: '600' },
+  breakdownCard: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    gap: spacing.xs,
+  },
+  breakdownTitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
 
   // Action Bar
   actionBar: {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,11 @@ const toCurrency = (value: unknown): string => {
   return `Rs ${num.toFixed(2)}`;
 };
 
+const hasFullInventoryShape = (product: Partial<Product> | null | undefined): boolean => {
+  if (!product) return false;
+  return Boolean(product.brand && product.model && product.category && product.product_barcode);
+};
+
 const toDateTime = (value: unknown): string => {
   if (!value || typeof value !== 'string') return '-';
   const parsed = new Date(value);
@@ -51,9 +56,62 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
   navigation,
   route,
 }) => {
-  const product = route.params?.product as Product;
+  const routeProduct = route.params?.product as Product | undefined;
+  const { products, fetchProducts } = useProductStore();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolvedProduct, setResolvedProduct] = useState<Product | null>(routeProduct ?? null);
   const { deleteProduct } = useProductStore();
+  const lookupStartedRef = useRef(false);
+
+  useEffect(() => {
+    setResolvedProduct(routeProduct ?? null);
+    lookupStartedRef.current = false;
+  }, [routeProduct?.id, routeProduct?.brand, routeProduct?.model, routeProduct?.category, routeProduct?.product_barcode]);
+
+  useEffect(() => {
+    if (!routeProduct?.id) {
+      return;
+    }
+
+    const localMatch = products.find((item) => item.id === routeProduct.id);
+    if (hasFullInventoryShape(localMatch)) {
+      setResolvedProduct(localMatch ?? null);
+      setIsResolving(false);
+      return;
+    }
+
+    if (!hasFullInventoryShape(routeProduct) && !lookupStartedRef.current) {
+      lookupStartedRef.current = true;
+      setIsResolving(true);
+      
+      const store = useProductStore.getState() as any;
+      if (store.fetchProductDetail) {
+        store.fetchProductDetail(routeProduct.id)
+          .then((detail: Product) => {
+            setResolvedProduct(detail);
+          })
+          .catch((err: any) => {
+            console.log('Failed to fetch single product detail, falling back to all products:', err);
+            fetchProducts()
+              .then(() => {
+                const refreshed = useProductStore.getState().products.find((item) => item.id === routeProduct.id);
+                setResolvedProduct(refreshed ?? routeProduct ?? null);
+              });
+          })
+          .finally(() => setIsResolving(false));
+      } else {
+        fetchProducts()
+          .then(() => {
+            const refreshed = useProductStore.getState().products.find((item) => item.id === routeProduct.id);
+            setResolvedProduct(refreshed ?? routeProduct ?? null);
+          })
+          .finally(() => setIsResolving(false));
+      }
+    }
+  }, [routeProduct?.id, fetchProducts, products, routeProduct]);
+
+  const product = resolvedProduct;
 
   const specsEntries = useMemo(
     () => Object.entries(product?.specs || {}),
@@ -68,8 +126,17 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
     );
   }
 
+  const priceBreakdown = product.price_breakdown || {};
+  const displayPrice = product.mop_including_gst ?? product.mrp ?? product.msp ?? product.buying_price;
+  const displayBasePrice = product.mop_excluding_gst ?? priceBreakdown.base_amount ?? product.msp ?? product.buying_price;
+  const displayGst = product.gst_label || (product.gst != null ? `including ${product.gst}% GST` : '-');
+
   const handleEdit = () => {
     navigation.navigate('ProductForm', { product, mode: 'edit' });
+  };
+
+  const handleSell = () => {
+    navigation.navigate('CheckoutPreview', { product });
   };
 
   const handleDelete = () => {
@@ -99,7 +166,7 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
@@ -115,6 +182,13 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
       >
+        {isResolving ? (
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading full inventory details...</Text>
+          </View>
+        ) : null}
+
         <View style={styles.heroCard}>
           <View style={styles.heroTopRow}>
             <View style={styles.heroIconWrap}>
@@ -168,10 +242,21 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
         </SectionCard>
 
         <SectionCard title="Pricing">
+          <DetailRow label="MOP" value={toCurrency(displayPrice)} />
+          <DetailRow label="Base Price" value={toCurrency(displayBasePrice)} />
           <DetailRow label="Buying Price" value={toCurrency(product.buying_price)} />
           <DetailRow label="MSP" value={toCurrency(product.msp)} />
           <DetailRow label="MRP" value={toCurrency(product.mrp)} />
-          <DetailRow label="GST" value={product.gst == null ? '-' : `${product.gst}%`} />
+          <DetailRow label="GST" value={displayGst} />
+          {priceBreakdown.gst_amount != null && (
+            <DetailRow label="GST Amount" value={toCurrency(priceBreakdown.gst_amount)} />
+          )}
+          {priceBreakdown.cgst_amount != null && (
+            <DetailRow label="CGST" value={`${priceBreakdown.cgst_percent ?? '-'}% · ${toCurrency(priceBreakdown.cgst_amount)}`} />
+          )}
+          {priceBreakdown.sgst_amount != null && (
+            <DetailRow label="SGST" value={`${priceBreakdown.sgst_percent ?? '-'}% · ${toCurrency(priceBreakdown.sgst_amount)}`} />
+          )}
         </SectionCard>
 
         <SectionCard title="Specifications">
@@ -199,11 +284,27 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
         <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
           onPress={handleEdit}
-          disabled={isDeleting}
+          disabled={isDeleting || product.sold}
         >
-          <Ionicons name="create-outline" size={18} color={colors.primary} />
-          <Text style={[styles.actionButtonText, { color: colors.primary }]}>Edit</Text>
+          <Ionicons name="create-outline" size={18} color={product.sold ? colors.textTertiary : colors.primary} />
+          <Text style={[styles.actionButtonText, { color: product.sold ? colors.textTertiary : colors.primary }]}>Edit</Text>
         </TouchableOpacity>
+
+        {!product.sold ? (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.sellButton]}
+            onPress={handleSell}
+            disabled={isDeleting}
+          >
+            <Ionicons name="cart-outline" size={18} color={colors.success} />
+            <Text style={[styles.actionButtonText, { color: colors.success }]}>Sell</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.actionButton, styles.soldBadgeButton]}>
+            <Ionicons name="checkmark-circle-outline" size={18} color={colors.textTertiary} />
+            <Text style={[styles.actionButtonText, { color: colors.textTertiary }]}>Sold</Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.actionButton, styles.deleteButton]}
@@ -281,8 +382,23 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingBottom: spacing['3xl'],
+    paddingBottom: spacing['5xl'],
     gap: spacing.lg,
+  },
+  loadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.sm,
+  },
+  loadingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   heroCard: {
     backgroundColor: colors.primaryLightest,
@@ -396,9 +512,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     padding: spacing.lg,
+    paddingBottom: spacing.lg,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+  },
+  soldBadgeButton: {
+    backgroundColor: colors.divider,
+    borderColor: colors.border,
   },
   actionButton: {
     flex: 1,
@@ -413,6 +534,10 @@ const styles = StyleSheet.create({
   editButton: {
     backgroundColor: colors.primaryLightest,
     borderColor: colors.primary,
+  },
+  sellButton: {
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
   },
   deleteButton: {
     backgroundColor: colors.dangerLight,

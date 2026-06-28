@@ -8,13 +8,15 @@ import {
   StatusBar,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { useProductStore } from '../../store/product.store';
-import { SoldItemHistory } from '../../api/product.api';
+import { SoldItemHistory, productAPI } from '../../api/product.api';
+import { exportSalesToExcel } from '../../utils/excelExport';
 
 interface SalesHistoryScreenProps {
   navigation: any;
@@ -70,6 +72,27 @@ const getPaymentColor = (mode: string): string => {
 export const SalesHistoryScreen: React.FC<SalesHistoryScreenProps> = ({ navigation }) => {
   const { salesHistory, isLoading, fetchSalesHistory } = useProductStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    setIsExporting(true);
+    try {
+      console.log('Fetching latest 200 sales history items for Excel export...');
+      const response = await productAPI.getCheckoutHistory(200);
+      if (!response.results || response.results.length === 0) {
+        Alert.alert('No Data', 'No sales history available to export.');
+        return;
+      }
+      console.log('Generating Excel sheet for', response.results.length, 'sales items...');
+      await exportSalesToExcel(response.results);
+      Alert.alert('Success', 'Sales report exported successfully!');
+    } catch (err: any) {
+      console.error('Export failed:', err);
+      Alert.alert('Export Failed', err.message || 'Could not export sales report.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -236,7 +259,7 @@ export const SalesHistoryScreen: React.FC<SalesHistoryScreenProps> = ({ navigati
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header */}
@@ -248,9 +271,22 @@ export const SalesHistoryScreen: React.FC<SalesHistoryScreenProps> = ({ navigati
           <Ionicons name="analytics-outline" size={18} color={colors.primary} />
           <Text style={styles.headerTitle}>Sales History</Text>
         </View>
-        <TouchableOpacity style={styles.headerIconBtn} onPress={onRefresh}>
-          <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity 
+            style={[styles.headerIconBtn, { marginRight: 8 }]} 
+            onPress={handleExportExcel}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Ionicons name="download-outline" size={20} color={colors.primary} />
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={onRefresh}>
+            <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {isLoading && salesHistory.length === 0 ? (
@@ -292,6 +328,7 @@ const styles = StyleSheet.create({
   },
   headerIconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  headerRightActions: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { ...typography.subtitle, color: colors.text },
 
   // Loading

@@ -35,6 +35,10 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
   route,
 }) => {
   const product = route.params?.product as Product;
+  const priceBreakdown = product.price_breakdown || {};
+  const mopIncludingGst = product.mop_including_gst ?? product.mrp ?? product.msp ?? product.buying_price;
+  const mopExcludingGst = product.mop_excluding_gst ?? priceBreakdown.base_amount ?? product.msp ?? product.buying_price;
+  const gstLabel = product.gst_label || (product.gst != null ? `including ${product.gst}% GST` : '-');
 
   if (!product) {
     return (
@@ -53,7 +57,7 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
@@ -108,26 +112,38 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
         <View style={styles.priceCard}>
           <View style={styles.priceRow}>
             <View style={styles.priceItem}>
-              <Text style={styles.priceLabel}>MRP</Text>
-              <Text style={styles.priceValue}>{toCurrency(product.mrp)}</Text>
+              <Text style={styles.priceLabel}>MOP</Text>
+              <Text style={styles.priceValue}>{toCurrency(mopIncludingGst)}</Text>
             </View>
             <View style={styles.priceDivider} />
             <View style={styles.priceItem}>
-              <Text style={styles.priceLabel}>MSP</Text>
-              <Text style={styles.priceValue}>{toCurrency(product.msp)}</Text>
+              <Text style={styles.priceLabel}>Base</Text>
+              <Text style={styles.priceValue}>{toCurrency(mopExcludingGst)}</Text>
             </View>
             <View style={styles.priceDivider} />
             <View style={styles.priceItem}>
               <Text style={styles.priceLabel}>Cost</Text>
-              <Text style={[styles.priceValue, { color: colors.textSecondary }]}>
-                {toCurrency(product.buying_price)}
-              </Text>
+              <Text style={[styles.priceValue, { color: colors.textSecondary }]}>{toCurrency(product.buying_price)}</Text>
             </View>
           </View>
-          {product.gst != null && (
+          {product.gst != null || product.gst_label || priceBreakdown.gst_amount != null ? (
             <View style={styles.gstRow}>
               <Ionicons name="document-text-outline" size={14} color={colors.info} />
-              <Text style={styles.gstText}>GST: {product.gst}%</Text>
+              <Text style={styles.gstText}>{gstLabel}</Text>
+            </View>
+          ) : null}
+          {(priceBreakdown.gst_amount != null || priceBreakdown.cgst_amount != null || priceBreakdown.sgst_amount != null) && (
+            <View style={styles.breakdownBox}>
+              <Text style={styles.breakdownTitle}>GST Breakdown</Text>
+              {priceBreakdown.gst_amount != null && (
+                <DetailRow label="GST Amount" value={toCurrency(priceBreakdown.gst_amount)} />
+              )}
+              {priceBreakdown.cgst_amount != null && (
+                <DetailRow label={`CGST (${priceBreakdown.cgst_percent ?? '-'}%)`} value={toCurrency(priceBreakdown.cgst_amount)} />
+              )}
+              {priceBreakdown.sgst_amount != null && (
+                <DetailRow label={`SGST (${priceBreakdown.sgst_percent ?? '-'}%)`} value={toCurrency(priceBreakdown.sgst_amount)} />
+              )}
             </View>
           )}
         </View>
@@ -225,6 +241,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gstText: { ...typography.caption, color: colors.info },
+  breakdownBox: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  breakdownTitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
 
   // Details
   sectionCard: {

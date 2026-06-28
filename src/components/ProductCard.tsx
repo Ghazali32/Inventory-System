@@ -7,11 +7,13 @@ import { Product } from '../api/product.api';
 interface ProductCardProps {
   product: Product;
   onPress?: (product: Product) => void;
+  onSellPress?: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onPress,
+  onSellPress,
 }) => {
   const getCategoryIcon = (category: string): keyof typeof Ionicons.glyphMap => {
     const lower = category.toLowerCase();
@@ -68,11 +70,25 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </View>
       </View>
 
+      {/* Sell Button */}
+      {!product.sold && onSellPress && (
+        <TouchableOpacity
+          style={styles.sellBtn}
+          onPress={(e) => {
+            e.stopPropagation();
+            onSellPress(product);
+          }}
+        >
+          <Ionicons name="cart-outline" size={14} color={colors.success} />
+          <Text style={styles.sellBtnText}>Sell</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Quantity Badge */}
       <View style={styles.quantityContainer}>
         <View style={[styles.quantityBadge, product.sold && styles.quantityBadgeSold]}>
           <Text style={[styles.quantityText, product.sold && styles.quantityTextSold]}>
-            {product.sold ? 0 : (product.quantity ?? 0)}
+            {product.sold ? 0 : (product.quantity ?? 1)}
           </Text>
         </View>
         <Text style={styles.quantityLabel}>Qty</Text>
@@ -210,6 +226,23 @@ const styles = StyleSheet.create({
     ...typography.small,
     color: colors.textTertiary,
     marginTop: 2,
+  },
+  sellBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.successLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginRight: spacing.md,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  sellBtnText: {
+    ...typography.captionMedium,
+    color: colors.success,
+    fontWeight: '600',
   },
   chevron: {
     marginLeft: spacing.xs,

@@ -22,12 +22,26 @@ export interface Product {
   mrp?: number | null;
   msp?: number | null;
   gst?: number | null;
+  mop_including_gst?: string | number | null;
+  mop_excluding_gst?: string | number | null;
+  gst_label?: string | null;
+  price_breakdown?: PriceBreakdown | null;
   color?: string;
   sold?: boolean;
   sold_datetime?: string | null;
   inventory_entry_datetime?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface PriceBreakdown {
+  base_amount?: string | number | null;
+  gst_amount?: string | number | null;
+  gst_percent?: string | number | null;
+  cgst_percent?: string | number | null;
+  cgst_amount?: string | number | null;
+  sgst_percent?: string | number | null;
+  sgst_amount?: string | number | null;
 }
 
 export interface ScanIngestPayload {
@@ -127,6 +141,28 @@ export const productAPI = {
         : (response.data as any).results ?? [];
     } catch (error: any) {
       console.error('❌ [API] Error in getProducts');
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Message:', error.message);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch single product details
+   * GET /api/products/{id}/
+   */
+  async getProduct(productId: number): Promise<Product> {
+    try {
+      console.log('🔵 [API] GET /api/products/' + productId + '/');
+      const response = await apiClient.get<Product>(
+        `/api/products/${productId}/`
+      );
+      console.log('✅ [API] Response Status:', response.status);
+      console.log('📥 Response Data:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [API] Error in getProduct');
       console.error('Status:', error.response?.status);
       console.error('Data:', error.response?.data);
       console.error('Message:', error.message);
@@ -517,6 +553,9 @@ export interface BillingDetails {
   quantity: number;
   rate: string;
   amount: string;
+  base_amount: string;
+  gst_percent: string;
+  gst_amount: string;
   cgst_percent: string;
   cgst_amount: string;
   sgst_percent: string;
