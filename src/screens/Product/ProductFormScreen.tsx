@@ -49,6 +49,7 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
   const [imei1, setImei1] = useState('');
   const [imei2, setImei2] = useState('');
   const [color, setColor] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [buyingPrice, setBuyingPrice] = useState('');
   const [msp, setMsp] = useState('');
   const [mrp, setMrp] = useState('');
@@ -237,24 +238,39 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
       return;
     }
 
-    if (!barcode.trim()) {
-      toast.warn('Barcode is required.', 'Missing Barcode');
+    const parsedQty = parseInt(quantity.trim() || '1', 10);
+    if (isNaN(parsedQty) || parsedQty < 1 || parsedQty > 999) {
+      toast.warn('Quantity must be a number between 1 and 999.', 'Invalid Quantity');
       return;
+    }
+
+    if (parsedQty > 1 && (imei1.trim() || imei2.trim())) {
+      toast.warn(
+        'Bulk quantity cannot be set when IMEI is specified. Items with IMEI must be entered with quantity 1.',
+        'Invalid Bulk Addition'
+      );
+      return;
+    }
+
+    const effectiveBarcode = barcode.trim() || `LOCAL-${Date.now().toString().slice(-6)}`;
+    if (!barcode.trim()) {
+      setBarcode(effectiveBarcode);
     }
 
     try {
       const resolvedSku =
         existingProduct?.sku ||
         existingProduct?.product_id ||
-        `SKU-${barcode.trim()}-${Date.now().toString().slice(-4)}`;
+        `SKU-${effectiveBarcode}-${Date.now().toString().slice(-4)}`;
 
       const payload: any = {
-        product_barcode: barcode.trim(),
+        product_barcode: effectiveBarcode,
         sku: resolvedSku,
         category: category.trim(),
         brand: brand.trim(),
         model: model.trim(),
         barcode_type: 'INTERNAL',
+        quantity: parsedQty,
       };
 
       // Optional IMEI fields
@@ -405,6 +421,14 @@ export const ProductFormScreen: React.FC<ProductFormScreenProps> = ({
               leftIcon="color-palette-outline"
               value={color}
               onChangeText={setColor}
+            />
+            <Input
+              label="Quantity"
+              placeholder="1"
+              leftIcon="layers-outline"
+              value={quantity}
+              onChangeText={setQuantity}
+              keyboardType="number-pad"
             />
             <Input
               label="Description (Optional)"

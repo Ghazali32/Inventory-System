@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -52,6 +53,8 @@ function ProductStackNavigator() {
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom || (Platform.OS === 'android' ? 32 : 0);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -70,9 +73,9 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.borderLight,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          paddingBottom: bottomInset > 0 ? bottomInset : 8,
           paddingTop: 8,
-          height: (insets.bottom > 0 ? 56 : 64) + insets.bottom,
+          height: (bottomInset > 0 ? 56 : 64) + bottomInset,
         },
       })}
     >

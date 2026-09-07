@@ -7,14 +7,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Alert,
+  Image,
   StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
+import { SignatureModal } from '../../components/SignatureModal';
 import { useAuthStore } from '../../store/auth.store';
 import { authAPI, BusinessProfile } from '../../api/auth.api';
 import { toast } from '../../store/toast.store';
@@ -30,9 +31,13 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
 }) => {
   const isEditMode = route.params?.isEditMode || false;
   const profileState = useAuthStore((s) => s.profile);
+  const signatureImage = useAuthStore((s) => s.signatureImage);
+  const hasSignature = useAuthStore((s) => s.hasSignature);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const fetchSignature = useAuthStore((s) => s.fetchSignature);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   // Form State
   const [shopName, setShopName] = useState(profileState?.shop_name || '');
@@ -43,11 +48,21 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
   const [shopPincode, setShopPincode] = useState(profileState?.shop_pincode || '');
   const [shopPhone, setShopPhone] = useState(profileState?.shop_phone || '');
 
-  // Optional Fields
+  // Optional Tax & KYC Fields
   const [gstNumber, setGstNumber] = useState(profileState?.gst_registration_number || '');
   const [panNumber, setPanNumber] = useState(profileState?.pan_number || '');
   const [shopLicense, setShopLicense] = useState(profileState?.shop_license_number || '');
+  const [shopLicenseExpiry, setShopLicenseExpiry] = useState(profileState?.shop_license_expiry || '');
   const [aadharNumber, setAadharNumber] = useState(profileState?.aadhar_number || '');
+
+  // Optional Bank Details
+  const [bankAccountNumber, setBankAccountNumber] = useState(profileState?.bank_account_number || '');
+  const [bankIfscCode, setBankIfscCode] = useState(profileState?.bank_ifsc_code || '');
+  const [bankHolderName, setBankHolderName] = useState(profileState?.bank_holder_name || '');
+
+  useEffect(() => {
+    fetchSignature().catch(() => {});
+  }, [fetchSignature]);
 
   useEffect(() => {
     if (profileState) {
@@ -61,7 +76,11 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
       setGstNumber(profileState.gst_registration_number || '');
       setPanNumber(profileState.pan_number || '');
       setShopLicense(profileState.shop_license_number || '');
+      setShopLicenseExpiry(profileState.shop_license_expiry || '');
       setAadharNumber(profileState.aadhar_number || '');
+      setBankAccountNumber(profileState.bank_account_number || '');
+      setBankIfscCode(profileState.bank_ifsc_code || '');
+      setBankHolderName(profileState.bank_holder_name || '');
     }
   }, [profileState]);
 
@@ -92,7 +111,12 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
         gst_registration_number: gstNumber.trim() || '',
         pan_number: panNumber.trim() || '',
         shop_license_number: shopLicense.trim() || '',
+        shop_license_expiry: shopLicenseExpiry.trim() || undefined,
         aadhar_number: aadharNumber.trim() || '',
+        bank_account_number: bankAccountNumber.trim() || undefined,
+        bank_ifsc_code: bankIfscCode.trim() || undefined,
+        bank_holder_name: bankHolderName.trim() || undefined,
+        signature_image_base64: signatureImage || undefined,
       };
 
       if (profileState && profileState.shop_name) {
@@ -155,6 +179,7 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
             </Text>
           )}
 
+          {/* Section 1: Required Details */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Required Details</Text>
             <Input
@@ -214,6 +239,50 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
             />
           </View>
 
+          {/* Section 2: Digital Signature */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Retailer Digital Signature</Text>
+              <View style={[styles.statusBadge, hasSignature ? styles.statusBadgeActive : styles.statusBadgeInactive]}>
+                <Text style={[styles.statusBadgeText, hasSignature ? styles.statusTextActive : styles.statusTextInactive]}>
+                  {hasSignature ? 'Uploaded' : 'Not Uploaded'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.signatureHelperText}>
+              Your signature appears on generated customer invoices in the "Authorized Signatory" section.
+            </Text>
+
+            {hasSignature && signatureImage ? (
+              <View style={styles.signaturePreviewCard}>
+                <Image
+                  source={{ uri: signatureImage }}
+                  style={styles.signaturePreviewImage}
+                  resizeMode="contain"
+                />
+                <TouchableOpacity
+                  style={styles.signatureActionBtn}
+                  onPress={() => setShowSignatureModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="create-outline" size={16} color={colors.primary} />
+                  <Text style={styles.signatureActionBtnText}>Change Signature</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.uploadSignaturePlaceholder}
+                onPress={() => setShowSignatureModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="pencil-outline" size={28} color={colors.primary} />
+                <Text style={styles.uploadPlaceholderTitle}>Add Digital Signature</Text>
+                <Text style={styles.uploadPlaceholderSubtitle}>Take a photo or upload from gallery</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Section 3: Tax & KYC */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tax & KYC (Optional)</Text>
             <Input
@@ -240,6 +309,13 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
               onChangeText={setShopLicense}
             />
             <Input
+              label="Shop License Expiry"
+              placeholder="YYYY-MM-DD"
+              leftIcon="calendar-outline"
+              value={shopLicenseExpiry}
+              onChangeText={setShopLicenseExpiry}
+            />
+            <Input
               label="Aadhar Number"
               placeholder="e.g. 1234 5678 9012"
               leftIcon="finger-print-outline"
@@ -249,7 +325,33 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
             />
           </View>
 
-
+          {/* Section 4: Bank Account Details */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Bank Account Details (Optional)</Text>
+            <Input
+              label="Account Holder Name"
+              placeholder="e.g. John Doe"
+              leftIcon="person-circle-outline"
+              value={bankHolderName}
+              onChangeText={setBankHolderName}
+            />
+            <Input
+              label="Bank Account Number"
+              placeholder="Enter account number"
+              leftIcon="wallet-outline"
+              value={bankAccountNumber}
+              onChangeText={setBankAccountNumber}
+              keyboardType="number-pad"
+            />
+            <Input
+              label="Bank IFSC Code"
+              placeholder="e.g. HDFC0001234"
+              leftIcon="business-outline"
+              value={bankIfscCode}
+              onChangeText={setBankIfscCode}
+              autoCapitalize="characters"
+            />
+          </View>
 
           <Button
             title="Save Profile"
@@ -261,6 +363,12 @@ export const BusinessProfileFormScreen: React.FC<BusinessProfileFormScreenProps>
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Signature Management Modal */}
+      <SignatureModal
+        visible={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+      />
     </SafeAreaView>
   );
 };
@@ -307,10 +415,94 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.xl,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
   sectionTitle: {
     ...typography.subtitle,
     color: colors.text,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+  },
+  statusBadgeActive: {
+    backgroundColor: colors.successLight,
+  },
+  statusBadgeInactive: {
+    backgroundColor: colors.surfaceAlt,
+  },
+  statusBadgeText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  statusTextActive: {
+    color: colors.success,
+  },
+  statusTextInactive: {
+    color: colors.textTertiary,
+  },
+  signatureHelperText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  signaturePreviewCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: spacing.sm,
+    ...shadows.sm,
+  },
+  signaturePreviewImage: {
+    width: '100%',
+    height: 90,
+    backgroundColor: '#FAFDF9',
+    borderRadius: borderRadius.sm,
+  },
+  signatureActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  signatureActionBtnText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  uploadSignaturePlaceholder: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.card,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    borderStyle: 'dashed',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  uploadPlaceholderTitle: {
+    ...typography.bodyMedium,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  uploadPlaceholderSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 12,
   },
   row: {
     flexDirection: 'row',

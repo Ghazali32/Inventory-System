@@ -17,6 +17,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  hasSignature: boolean;
+  signatureImage: string | null;
 
   login: (username: string, password: string) => Promise<void>;
   signup: (params: {
@@ -29,6 +31,9 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
   fetchProfile: () => Promise<boolean>;
+  fetchSignature: () => Promise<string | null>;
+  uploadSignature: (base64: string) => Promise<boolean>;
+  deleteSignature: () => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -53,6 +58,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  hasSignature: false,
+  signatureImage: null,
 
   /**
    * Signin — POST /api/auth/signin_temp/
@@ -222,12 +229,78 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         profile.shop_pincode &&
         profile.shop_phone
       );
-      set({ profile, isProfileComplete: isComplete });
+      const hasSig = profile.has_signature !== undefined
+        ? profile.has_signature
+        : (profile.signature_image_base64 ? true : get().hasSignature);
+      const sigImg = profile.signature_image_base64 || get().signatureImage;
+      set({
+        profile,
+        isProfileComplete: isComplete,
+        hasSignature: hasSig,
+        signatureImage: sigImg,
+      });
       return isComplete;
     } catch (error: any) {
       console.log('--- FETCH PROFILE ERROR ---');
       console.log('Error:', error);
       set({ profile: null, isProfileComplete: false });
+      return false;
+    }
+  },
+
+  /**
+   * Fetch retailer's digital signature
+   */
+  fetchSignature: async () => {
+    try {
+      const data = await authAPI.getSignature();
+      set({
+        hasSignature: data.has_signature,
+        signatureImage: data.has_signature && data.signature_image_base64 ? data.signature_image_base64 : null,
+      });
+      return data.signature_image_base64 || null;
+    } catch (error: any) {
+      console.log('--- FETCH SIGNATURE ERROR ---', error?.message);
+      return null;
+    }
+  },
+
+  /**
+   * Upload or update retailer's digital signature
+   */
+  uploadSignature: async (base64: string) => {
+    try {
+      set({ isLoading: true });
+      const res = await authAPI.uploadSignature(base64);
+      set({
+        hasSignature: res.has_signature,
+        signatureImage: base64,
+        isLoading: false,
+      });
+      return true;
+    } catch (error: any) {
+      console.log('--- UPLOAD SIGNATURE ERROR ---', error?.message);
+      set({ isLoading: false, error: error.message || 'Failed to upload signature' });
+      return false;
+    }
+  },
+
+  /**
+   * Delete retailer's digital signature
+   */
+  deleteSignature: async () => {
+    try {
+      set({ isLoading: true });
+      const res = await authAPI.deleteSignature();
+      set({
+        hasSignature: false,
+        signatureImage: null,
+        isLoading: false,
+      });
+      return true;
+    } catch (error: any) {
+      console.log('--- DELETE SIGNATURE ERROR ---', error?.message);
+      set({ isLoading: false, error: error.message || 'Failed to delete signature' });
       return false;
     }
   },

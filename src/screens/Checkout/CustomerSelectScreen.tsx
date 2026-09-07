@@ -27,6 +27,7 @@ export const CustomerSelectScreen: React.FC<CustomerSelectScreenProps> = ({
   route,
 }) => {
   const product = route.params?.product as Product;
+  const items = route.params?.items;
   const { searchCustomers } = useProductStore();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,7 +64,7 @@ export const CustomerSelectScreen: React.FC<CustomerSelectScreenProps> = ({
   }, [searchQuery, fetchCustomers]);
 
   const handleSkipToNew = () => {
-    navigation.navigate('CustomerForm', { product });
+    navigation.navigate('CustomerForm', { product, items });
   };
 
   const handleSelectCustomer = async (customer: SearchCustomerResult) => {
@@ -74,6 +75,7 @@ export const CustomerSelectScreen: React.FC<CustomerSelectScreenProps> = ({
       console.log('Customer profile retrieved. Prefilling and navigating to CustomerFormScreen.');
       navigation.navigate('CustomerForm', {
         product,
+        items,
         prefilledCustomer: fullProfile,
       });
     } catch (error: any) {
@@ -81,6 +83,7 @@ export const CustomerSelectScreen: React.FC<CustomerSelectScreenProps> = ({
       // Fallback to whatever details we have from the search list
       navigation.navigate('CustomerForm', {
         product,
+        items,
         prefilledCustomer: {
           customer_id: customer.customer_id,
           name: customer.name,

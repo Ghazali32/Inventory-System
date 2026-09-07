@@ -8,6 +8,7 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../theme'
 import { BillingDetails, Product } from '../../api/product.api';
 import { useAuthStore } from '../../store/auth.store';
 import { toast } from '../../store/toast.store';
+import { numberToWords } from '../../utils/numberToWords';
 
 interface InvoiceScreenProps {
   navigation: any;
@@ -26,7 +28,8 @@ interface InvoiceScreenProps {
 const generateInvoiceHTML = (
   billing: BillingDetails,
   profile: any,
-  customer: any
+  customer: any,
+  signatureBase64?: string | null
 ): string => {
   const shopName = profile?.shop_name || billing.shop_name || 'Your Business';
   const shopAddress = profile
@@ -244,22 +247,123 @@ const generateInvoiceHTML = (
           color: #fff;
           font-weight: 700;
           font-size: 16px;
+        /* Summary */
+        .summary-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 24px;
+          gap: 24px;
+        }
+        .words-box {
+          flex: 1;
+          padding: 12px 16px;
+          background: #f8faf9;
+          border-radius: 8px;
+          border-left: 3px solid #2D6A4F;
+        }
+        .words-label {
+          font-size: 11px;
+          font-weight: 600;
+          color: #6B7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 4px;
+          display: block;
+        }
+        .words-value {
+          font-size: 13px;
+          font-weight: 600;
+          color: #1a1a2e;
+          line-height: 1.4;
+        }
+        .summary-box {
+          width: 320px;
+          background: #f8faf9;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+        .summary-row {
+          display: flex;
+          justify-content: space-between;
+          padding: 10px 20px;
+          font-size: 13px;
+          border-bottom: 1px solid #E5E7EB;
+        }
+        .summary-row:last-child {
+          border-bottom: none;
+        }
+        .summary-label {
+          color: #6B7280;
+        }
+        .summary-value {
+          font-weight: 500;
+          color: #1a1a2e;
+        }
+        .summary-total {
+          background: #2D6A4F;
+          padding: 14px 20px;
+        }
+        .summary-total .summary-label,
+        .summary-total .summary-value {
+          color: #fff;
+          font-weight: 700;
+          font-size: 16px;
         }
 
-        /* Payment */
+        /* Bottom Section with Signatory */
+        .bottom-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          margin-bottom: 32px;
+          padding-top: 16px;
+        }
         .payment-badge {
           display: inline-flex;
           align-items: center;
           gap: 6px;
           background: #D1FAE5;
           color: #065F46;
-          padding: 6px 14px;
+          padding: 8px 16px;
           border-radius: 20px;
           font-size: 12px;
           font-weight: 600;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          margin-bottom: 32px;
+        }
+        .signatory-box {
+          text-align: center;
+          width: 200px;
+        }
+        .signatory-signature-wrap {
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 6px;
+        }
+        .signatory-signature-img {
+          max-width: 160px;
+          max-height: 55px;
+          object-fit: contain;
+        }
+        .signatory-line {
+          height: 1px;
+          background: #9CA3AF;
+          margin: 8px 0 4px 0;
+        }
+        .signatory-firm {
+          font-size: 11px;
+          font-weight: 600;
+          color: #1a1a2e;
+        }
+        .signatory-title {
+          font-size: 10px;
+          color: #6B7280;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-top: 2px;
         }
 
         /* Footer */
@@ -329,30 +433,63 @@ const generateInvoiceHTML = (
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>1</td>
-                <td>
-                  <strong>${billing.brand_name} ${billing.product_name}</strong><br/>
-                  <span style="font-size:11px;color:#6B7280">Model: ${billing.model_number}</span>
-                </td>
-                <td>${billing.hsn_sac || '-'}</td>
-                <td>${billing.quantity}</td>
-                <td>₹${Number(billing.rate).toLocaleString('en-IN')}</td>
-                <td><strong>₹${Number(billing.amount).toLocaleString('en-IN')}</strong></td>
-              </tr>
+              ${
+                billing.items && billing.items.length > 0
+                  ? billing.items
+                      .map(
+                        (it, idx) => `
+                    <tr>
+                      <td>${idx + 1}</td>
+                      <td>
+                        <strong>${it.brand_name || ''} ${it.product_name || ''}</strong><br/>
+                        <span style="font-size:11px;color:#6B7280">Model: ${it.model_number || ''}</span>
+                        ${
+                          it.imei_no_1 || it.imei_no_2
+                            ? `<br/><span style="font-size:10px;font-family:monospace;color:#4B5563">IMEI: ${[it.imei_no_1, it.imei_no_2].filter(Boolean).join(', ')}</span>`
+                            : ''
+                        }
+                      </td>
+                      <td>${it.hsn_sac || '-'}</td>
+                      <td>${it.quantity}</td>
+                      <td>₹${Number(it.rate || 0).toLocaleString('en-IN')}</td>
+                      <td><strong>₹${Number(it.amount || it.total_amount || 0).toLocaleString('en-IN')}</strong></td>
+                    </tr>
+                  `
+                      )
+                      .join('')
+                  : `
+                    <tr>
+                      <td>1</td>
+                      <td>
+                        <strong>${billing.brand_name} ${billing.product_name}</strong><br/>
+                        <span style="font-size:11px;color:#6B7280">Model: ${billing.model_number}</span>
+                      </td>
+                      <td>${billing.hsn_sac || '-'}</td>
+                      <td>${billing.quantity}</td>
+                      <td>₹${Number(billing.rate).toLocaleString('en-IN')}</td>
+                      <td><strong>₹${Number(billing.amount).toLocaleString('en-IN')}</strong></td>
+                    </tr>
+                  `
+              }
             </tbody>
           </table>
-          ${billing.imei_no_1 || billing.imei_no_2
-      ? `<div class="imei-row">
+          ${
+            !billing.items && (billing.imei_no_1 || billing.imei_no_2)
+              ? `<div class="imei-row">
                   ${billing.imei_no_1 ? `<span><span class="imei-label">IMEI 1:</span> ${billing.imei_no_1}</span>` : ''}
                   ${billing.imei_no_2 ? `<span><span class="imei-label">IMEI 2:</span> ${billing.imei_no_2}</span>` : ''}
                 </div>`
-      : ''
-    }
+              : ''
+          }
         </div>
 
-        <!-- Summary -->
+        <!-- Summary & Words Section -->
         <div class="summary-section">
+          <div class="words-box">
+            <span class="words-label">Invoice Amount in Words</span>
+            <div class="words-value">${numberToWords(billing.total_amount)}</div>
+          </div>
+
           <div class="summary-box">
             <div class="summary-row">
               <span class="summary-label">Base Amount</span>
@@ -362,20 +499,22 @@ const generateInvoiceHTML = (
               <span class="summary-label">GST (${billing.gst_percent || '0'}%)</span>
               <span class="summary-value">₹${Number(billing.gst_amount || 0).toLocaleString('en-IN')}</span>
             </div>
-            ${Number(billing.cgst_amount) > 0
-      ? `<div class="summary-row">
+            ${
+              Number(billing.cgst_amount) > 0
+                ? `<div class="summary-row">
                     <span class="summary-label">CGST (${billing.cgst_percent}%)</span>
                     <span class="summary-value">₹${Number(billing.cgst_amount).toLocaleString('en-IN')}</span>
                   </div>`
-      : ''
-    }
-            ${Number(billing.sgst_amount) > 0
-      ? `<div class="summary-row">
+                : ''
+            }
+            ${
+              Number(billing.sgst_amount) > 0
+                ? `<div class="summary-row">
                     <span class="summary-label">SGST (${billing.sgst_percent}%)</span>
                     <span class="summary-value">₹${Number(billing.sgst_amount).toLocaleString('en-IN')}</span>
                   </div>`
-      : ''
-    }
+                : ''
+            }
             <div class="summary-total">
               <div class="summary-row" style="border:none;padding:0;background:transparent;">
                 <span class="summary-label">Total</span>
@@ -385,9 +524,23 @@ const generateInvoiceHTML = (
           </div>
         </div>
 
-        <!-- Payment -->
-        <div class="payment-badge">
-          ✓ Payment Mode: ${billing.payment_mode?.toUpperCase() || 'CASH'}
+        <!-- Bottom Section with Payment Badge and Authorized Signatory -->
+        <div class="bottom-section">
+          <div class="payment-badge">
+            ✓ Payment Mode: ${billing.payment_mode?.toUpperCase() || 'CASH'}
+          </div>
+
+          <div class="signatory-box">
+            <div class="signatory-signature-wrap">
+              ${
+                signatureBase64 || billing.signature_image_base64
+                  ? `<img src="${signatureBase64 || billing.signature_image_base64}" class="signatory-signature-img" alt="Authorized Signatory" />`
+                  : `<div style="width: 140px; height: 1px; border-bottom: 1px dashed #9CA3AF; margin-top: 30px;"></div>`
+              }
+            </div>
+            <div class="signatory-firm">For ${shopName}</div>
+            <div class="signatory-title">Authorized Signatory</div>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -410,6 +563,7 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
   const customer = route.params?.customer;
   const invoiceNumber = route.params?.invoiceNumber as string | undefined;
   const profile = useAuthStore((s) => s.profile);
+  const signatureImage = useAuthStore((s) => s.signatureImage);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -429,10 +583,12 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
     ? { ...billingDetails, invoice_number: invoiceNumber }
     : billingDetails;
 
+  const effectiveSignature = finalBilling.signature_image_base64 || signatureImage;
+
   const handleSavePDF = async () => {
     setIsSaving(true);
     try {
-      const html = generateInvoiceHTML(finalBilling, profile, customer);
+      const html = generateInvoiceHTML(finalBilling, profile, customer, effectiveSignature);
       const { uri } = await Print.printToFileAsync({ html });
       toast.success('Invoice PDF saved successfully.', 'PDF Saved');
     } catch (error: any) {
@@ -445,7 +601,7 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
   const handleShare = async () => {
     setIsSharing(true);
     try {
-      const html = generateInvoiceHTML(finalBilling, profile, customer);
+      const html = generateInvoiceHTML(finalBilling, profile, customer, effectiveSignature);
       const { uri } = await Print.printToFileAsync({ html });
 
       if (await Sharing.isAvailableAsync()) {
@@ -537,24 +693,67 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
 
           <View style={styles.cardDivider} />
 
-          {/* Product */}
+          {/* Products */}
           <View style={styles.invoiceSection}>
-            <Text style={styles.invoiceSectionLabel}>PRODUCT</Text>
-            <View style={styles.productRow}>
-              <View style={styles.productInfo}>
-                <Text style={styles.productName}>
-                  {finalBilling.brand_name} {finalBilling.product_name}
-                </Text>
-                <Text style={styles.productSub}>Model: {finalBilling.model_number}</Text>
-                {finalBilling.imei_no_1 ? (
-                  <Text style={styles.imeiText}>IMEI 1: {finalBilling.imei_no_1}</Text>
-                ) : null}
-                {finalBilling.imei_no_2 ? (
-                  <Text style={styles.imeiText}>IMEI 2: {finalBilling.imei_no_2}</Text>
-                ) : null}
+            <Text style={styles.invoiceSectionLabel}>
+              {finalBilling.items && finalBilling.items.length > 1
+                ? `PRODUCTS (${finalBilling.items.length})`
+                : 'PRODUCT'}
+            </Text>
+            {finalBilling.items && finalBilling.items.length > 0 ? (
+              finalBilling.items.map((it, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.productRow,
+                    idx > 0 && {
+                      marginTop: spacing.md,
+                      paddingTop: spacing.md,
+                      borderTopWidth: 1,
+                      borderTopColor: colors.borderLight,
+                    },
+                  ]}
+                >
+                  <View style={styles.productInfo}>
+                    <Text style={styles.productName}>
+                      {it.brand_name} {it.product_name}
+                    </Text>
+                    <Text style={styles.productSub}>Model: {it.model_number}</Text>
+                    {it.imei_no_1 ? (
+                      <Text style={styles.imeiText}>IMEI 1: {it.imei_no_1}</Text>
+                    ) : null}
+                    {it.imei_no_2 ? (
+                      <Text style={styles.imeiText}>IMEI 2: {it.imei_no_2}</Text>
+                    ) : null}
+                    <Text style={styles.productSub}>
+                      Rate: ₹{Number(it.rate).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.productQty}>x{it.quantity}</Text>
+                    <Text style={[styles.productName, { marginTop: 4, color: colors.primary }]}>
+                      ₹{Number(it.amount || it.total_amount).toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.productRow}>
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>
+                    {finalBilling.brand_name} {finalBilling.product_name}
+                  </Text>
+                  <Text style={styles.productSub}>Model: {finalBilling.model_number}</Text>
+                  {finalBilling.imei_no_1 ? (
+                    <Text style={styles.imeiText}>IMEI 1: {finalBilling.imei_no_1}</Text>
+                  ) : null}
+                  {finalBilling.imei_no_2 ? (
+                    <Text style={styles.imeiText}>IMEI 2: {finalBilling.imei_no_2}</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.productQty}>x{finalBilling.quantity}</Text>
               </View>
-              <Text style={styles.productQty}>x{finalBilling.quantity}</Text>
-            </View>
+            )}
           </View>
 
           <View style={styles.cardDivider} />
@@ -587,6 +786,12 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
             </Text>
           </View>
 
+          {/* Amount in Words */}
+          <View style={styles.wordsBoxOnScreen}>
+            <Text style={styles.wordsLabelOnScreen}>Invoice Amount in Words</Text>
+            <Text style={styles.wordsTextOnScreen}>{numberToWords(finalBilling.total_amount)}</Text>
+          </View>
+
           {Number(finalBilling.gst_percent) > 0 && (
             <View style={styles.breakdownCard}>
               <Text style={styles.breakdownTitle}>GST Breakdown</Text>
@@ -612,6 +817,29 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
             <Ionicons name="wallet-outline" size={16} color={colors.success} />
             <Text style={styles.paymentText}>
               Payment: {finalBilling.payment_mode?.toUpperCase() || 'CASH'}
+            </Text>
+          </View>
+
+          <View style={styles.cardDivider} />
+
+          {/* Authorized Signatory */}
+          <View style={styles.signatoryCardOnScreen}>
+            <Text style={styles.signatoryCardLabel}>Authorized Signatory</Text>
+            {effectiveSignature ? (
+              <View style={styles.signatoryImgContainer}>
+                <Image
+                  source={{ uri: effectiveSignature }}
+                  style={styles.onScreenSignatureImage}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View style={styles.signatoryPlaceholder}>
+                <Text style={styles.signatoryPlaceholderText}>No signature on file</Text>
+              </View>
+            )}
+            <Text style={styles.signatoryShopText}>
+              For {profile?.shop_name || finalBilling.shop_name}
             </Text>
           </View>
         </View>
@@ -764,4 +992,82 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md, borderRadius: borderRadius.button, backgroundColor: colors.success,
   },
   shareBtnText: { ...typography.bodyMedium, color: colors.textInverse, fontWeight: '600' },
+
+  // Words Box
+  wordsBoxOnScreen: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: borderRadius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  wordsLabelOnScreen: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 10,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  wordsTextOnScreen: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 13,
+  },
+
+  // Authorized Signatory
+  signatoryCardOnScreen: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+  },
+  signatoryCardLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
+  signatoryImgContainer: {
+    width: 160,
+    height: 60,
+    backgroundColor: '#fff',
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 4,
+    marginBottom: spacing.xs,
+  },
+  onScreenSignatureImage: {
+    width: '100%',
+    height: '100%',
+  },
+  signatoryPlaceholder: {
+    width: 140,
+    height: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: spacing.xs,
+  },
+  signatoryPlaceholderText: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    fontSize: 10,
+  },
+  signatoryShopText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginTop: 2,
+  },
 });

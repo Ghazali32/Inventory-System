@@ -74,7 +74,19 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
       return;
     }
 
-    const localMatch = products.find((item) => item.id === routeProduct.id);
+    // Try to find the matching inventory item in the store
+    let localMatch: Product | undefined;
+    if (routeProduct.brand && routeProduct.model) {
+      localMatch = products.find(
+        (item) =>
+          item.brand?.toLowerCase() === routeProduct.brand?.toLowerCase() &&
+          item.model?.toLowerCase() === routeProduct.model?.toLowerCase()
+      );
+    }
+    if (!localMatch) {
+      localMatch = products.find((item) => item.id === routeProduct.id);
+    }
+
     if (hasFullInventoryShape(localMatch)) {
       setResolvedProduct(localMatch ?? null);
       setIsResolving(false);
@@ -84,32 +96,50 @@ export const ProductDetailsScreen: React.FC<ProductDetailsScreenProps> = ({
     if (!hasFullInventoryShape(routeProduct) && !lookupStartedRef.current) {
       lookupStartedRef.current = true;
       setIsResolving(true);
+
+      const isFromDashboardCatalog = !!(routeProduct.brand && routeProduct.model);
       
-      const store = useProductStore.getState() as any;
-      if (store.fetchProductDetail) {
-        store.fetchProductDetail(routeProduct.id)
-          .then((detail: Product) => {
+      const resolveFlow = async () => {
+        try {
+          if (isFromDashboardCatalog) {
+            console.log('Resolving product from dashboard catalog by brand/model:', routeProduct.brand, routeProduct.model);
+            await fetchProducts();
+            const refreshed = useProductStore.getState().products.find(
+              (item) =>
+                item.brand?.toLowerCase() === routeProduct.brand?.toLowerCase() &&
+                item.model?.toLowerCase() === routeProduct.model?.toLowerCase()
+            );
+            if (refreshed) {
+              setResolvedProduct(refreshed);
+              return;
+            }
+          }
+
+          console.log('Fetching details for product ID:', routeProduct.id);
+          const store = useProductStore.getState() as any;
+          if (store.fetchProductDetail) {
+            const detail = await store.fetchProductDetail(routeProduct.id);
             setResolvedProduct(detail);
-          })
-          .catch((err: any) => {
-            console.log('Failed to fetch single product detail, falling back to all products:', err);
-            fetchProducts()
-              .then(() => {
-                const refreshed = useProductStore.getState().products.find((item) => item.id === routeProduct.id);
-                setResolvedProduct(refreshed ?? routeProduct ?? null);
-              });
-          })
-          .finally(() => setIsResolving(false));
-      } else {
-        fetchProducts()
-          .then(() => {
+          } else {
+            await fetchProducts();
             const refreshed = useProductStore.getState().products.find((item) => item.id === routeProduct.id);
             setResolvedProduct(refreshed ?? routeProduct ?? null);
-          })
-          .finally(() => setIsResolving(false));
-      }
+          }
+        } catch (err) {
+          console.log('Error resolving product details:', err);
+          if (!isFromDashboardCatalog) {
+            await fetchProducts().catch(() => {});
+            const refreshed = useProductStore.getState().products.find((item) => item.id === routeProduct.id);
+            setResolvedProduct(refreshed ?? routeProduct ?? null);
+          }
+        } finally {
+          setIsResolving(false);
+        }
+      };
+
+      resolveFlow();
     }
-  }, [routeProduct?.id, fetchProducts, products, routeProduct]);
+  }, [routeProduct?.id, routeProduct?.brand, routeProduct?.model, fetchProducts, products, routeProduct]);
 
   const product = resolvedProduct;
 

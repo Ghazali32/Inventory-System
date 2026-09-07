@@ -335,7 +335,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                   style={styles.topItem}
                   onPress={() =>
                     navigation.navigate('ProductDetails', {
-                      product: { id: item.product_id },
+                      product: {
+                        id: item.product_id,
+                        brand: item.brand,
+                        model: item.model,
+                        category: item.category,
+                      },
                     })
                   }
                   activeOpacity={0.7}
@@ -394,7 +399,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
                 style={styles.lowStockItem}
                 onPress={() =>
                   navigation.navigate('ProductDetails', {
-                    product: { id: item.product_id },
+                    product: {
+                      id: item.product_id,
+                      brand: item.brand,
+                      model: item.model,
+                      category: item.category,
+                      product_barcode: item.product_barcode,
+                    },
                   })
                 }
                 activeOpacity={0.7}

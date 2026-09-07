@@ -39,6 +39,8 @@ export interface BusinessProfile {
   bank_ifsc_code?: string;
   bank_holder_name?: string;
   aadhar_number?: string;
+  signature_image_base64?: string;
+  has_signature?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -170,5 +172,46 @@ export const authAPI = {
   async updateProfile(data: Partial<BusinessProfile>): Promise<BusinessProfile> {
     const response = await apiClient.put<BusinessProfile>('/api/accounts/profile/', data);
     return response.data;
-  }
+  },
+
+  // ---------- Signature ----------
+
+  /**
+   * Get Retailer Signature
+   * GET /api/accounts/signature/
+   */
+  async getSignature(): Promise<SignatureResponse> {
+    const response = await apiClient.get<SignatureResponse>('/api/accounts/signature/');
+    return response.data;
+  },
+
+  /**
+   * Upload or Update Retailer Signature
+   * POST /api/accounts/signature/
+   */
+  async uploadSignature(signature_image_base64: string): Promise<SignatureMutationResponse> {
+    const response = await apiClient.post<SignatureMutationResponse>('/api/accounts/signature/', {
+      signature_image_base64,
+    });
+    return response.data;
+  },
+
+  /**
+   * Delete Retailer Signature
+   * DELETE /api/accounts/signature/
+   */
+  async deleteSignature(): Promise<SignatureMutationResponse> {
+    const response = await apiClient.delete<SignatureMutationResponse>('/api/accounts/signature/');
+    return response.data;
+  },
 };
+
+export interface SignatureResponse {
+  has_signature: boolean;
+  signature_image_base64: string;
+}
+
+export interface SignatureMutationResponse {
+  detail: string;
+  has_signature: boolean;
+}

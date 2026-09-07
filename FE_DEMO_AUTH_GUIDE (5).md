@@ -176,11 +176,13 @@ Response fields:
 | `bank_ifsc_code` | string | No | IFSC code |
 | `bank_holder_name` | string | No | Account holder name |
 | `aadhar_number` | string | No | Aadhar number |
+| `signature_image_base64` | string | No | Retailer signature in base64 Data URI format (`data:image/png;base64,...`) |
 
 **Response fields:**
 | Field | Type | Notes |
 |-------|------|------|
 | All above fields | | |
+| `has_signature` | boolean | `true` if signature image is uploaded |
 | `created_at` | datetime | Profile created |
 | `updated_at` | datetime | Profile updated |
 
@@ -188,6 +190,22 @@ Response fields:
 - After signin, always call `GET /api/accounts/profile/`.
 - If profile is incomplete, show the form and submit via `POST` or `PUT`.
 - Block inventory/selling flow until profile is complete.
+
+### Dedicated Signature Endpoints
+
+### `GET /api/accounts/signature/`
+### `POST /api/accounts/signature/`
+### `DELETE /api/accounts/signature/`
+
+**Purpose:**
+- Dedicated endpoint to fetch, upload/update, or delete the retailer's signature.
+- `GET`: Returns `{ "has_signature": boolean, "signature_image_base64": string }`.
+- `POST`: Uploads or updates signature `{ "signature_image_base64": "data:image/png;base64,..." }` (Max 5MB).
+- `DELETE`: Removes the signature from the account.
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+- `X-Device-Id: <device_id>` (required)
 
 ### `POST /api/accounts/users/<uuid:user_id>/reset-password/`
 
@@ -775,5 +793,221 @@ Output:
   "specs": { "ram": "8GB", "rom": "256GB" },
   ...
 }
+
+---
+
+## New Features (v2)
+
+### `GET /api/checkout/history/export/`
+
+**Purpose:**
+- Download sales history as an Excel (.xlsx) file for offline reporting.
+- Filtered by time range: last N months or previous calendar month.
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+- `X-Device-Id: <device_id>` (required)
+
+**Query params:**
+
+| Param | Required | Type | Notes |
+|-------|----------|------|-------|
+| `months` | No | integer | `1`, `2`, `3`, `6`, `12` — how many months back from today. Default `1` |
+| `period` | No | string | `last_month` — shortcut for the previous calendar month. Overrides `months` if set |
+
+**Response:**
+- Content-Type: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- Content-Disposition: `attachment; filename="sales_history_YYYY-MM-DD_to_YYYY-MM-DD.xlsx"`
+- The Excel file contains columns: #, Invoice No, Invoice Date, Customer Name, Customer Contact, Product Name, Brand, Model, IMEI 1, IMEI 2, HSN/SAC, Quantity, Rate (₹), Amount (₹), CGST %, CGST (₹), SGST %, SGST (₹), Total Amount (₹), Payment Mode
+- Includes a TOTAL summary row at the bottom.
+
+**FE instructions:**
+- Add a "Download Excel" button on the sales history page.
+- Show a dropdown: Last 1 month, Last 2 months, Last 3 months, Last 6 months, Last 1 year, Last month (calendar).
+- Hit the endpoint and trigger browser file download using `window.open()` or `fetch` + blob download.
+
+---
+
+### Bulk Quantity Add (updated `POST /api/products/create-from-form/`)
+
+**What changed:**
+- `create-from-form` now accepts an optional `quantity` field.
+- When `quantity > 1`, the backend creates N `ProductInventory` rows (all sharing the same `ProductMaster`, same pricing, no IMEI).
+- This is for **local products** without barcodes that a retailer adds manually in bulk.
+
+**New request field:**
+
+| Field | Required | Type | Notes |
+|-------|----------|------|-------|
+| `quantity` | No | integer | Default `1`. Range: `1` to `999`. Cannot be > 1 if `imei1` is set |
+
+**Updated response fields:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `action` | string | `created` |
+| `quantity_created` | integer | Number of inventory rows created |
+| `product` | object | `ProductInventorySerializer` output (first item) |
+| `all_inventory_ids` | array of integers | IDs of all created inventory rows |
+
+**Validation:**
+- `quantity > 1` and `imei1` is set → error (can't have duplicate IMEIs)
+- `quantity` must be 1–999
+
+**FE instructions:**
+- In the "Add Product" form, add a `Quantity` number input field (default 1).
+- When adding local products (no barcode/IMEI), allow setting quantity to 10, 20, etc.
+- Send `quantity` in the POST body along with other product fields.
+
+---
+
+### `POST /api/checkout/complete-multi/`
+
+**Purpose:**
+- Sell multiple products to a single customer in one invoice.
+- Each item can have a different quantity.
+- Creates one invoice with multiple line items (like the Vyapar invoice screenshot).
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+- `X-Device-Id: <device_id>` (required)
+
+**Request body:**
+
+| Field | Required | Type | Notes |
+|-------|----------|------|-------|
+| `customer_id` | No | UUID | Existing sold customer. Required if `customer_name` not sent |
+| `customer_name` | No* | string | Required when `customer_id` is not sent |
+| `customer_phone` | No | string | For new sold customer |
+| `customer_email` | No | string | For new sold customer |
+| `customer_address` | No | string | For new sold customer |
+| `customer_city` | No | string | For new sold customer |
+| `customer_state` | No | string | For new sold customer |
+| `customer_pincode` | No | string | For new sold customer |
+| `payment_mode` | No | string | `cash`, `card`, `upi`, `cheque`, `emi`. Default `cash` |
+| `items` | Yes | array | List of items to sell |
+
+`items[]` fields:
+
+| Field | Required | Type | Notes |
+|-------|----------|------|-------|
+| `inventory_id` | Yes | integer | Reference inventory item (used to identify the product) |
+| `quantity` | No | integer | Default `1`. How many units to sell. Range: 1–999 |
+
+**Behavior:**
+- All items get the **same invoice number** (one invoice).
+- For each item, the backend finds N unsold inventory rows of the same product and marks them sold.
+- If not enough stock, returns `400` with detail.
+- One `SoldItem` row per line item (with quantity).
+
+**Response fields:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `sale_completed` | boolean | `true` |
+| `invoice_number` | string | Single invoice number for the whole sale |
+| `invoice_date` | string | ISO date |
+| `customer` | object | `SoldCustomerSerializer` output |
+| `items` | array | Per-item breakdown |
+| `total_quantity` | integer | Sum of all item quantities |
+| `grand_total` | string | Sum of all item totals |
+| `payment_mode` | string | Payment mode used |
+| `sold_inventory_ids` | array of integers | All sold inventory row IDs |
+| `message` | string | Success message |
+
+`items[]` response fields:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `sold_item_id` | integer | SoldItem row ID |
+| `product_name` | string | Product model |
+| `brand_name` | string | Brand |
+| `model_number` | string | Model |
+| `quantity` | integer | Units sold |
+| `rate` | string | Unit price |
+| `amount` | string | Line total (rate × quantity) |
+| `cgst_percent` | string | CGST % |
+| `cgst_amount` | string | CGST amount for this line |
+| `sgst_percent` | string | SGST % |
+| `sgst_amount` | string | SGST amount for this line |
+| `total_amount` | string | Line total |
+| `imei_no_1` | string | IMEI 1 (if applicable) |
+| `imei_no_2` | string | IMEI 2 (if applicable) |
+
+**FE instructions:**
+- In billing/checkout, allow adding multiple products (cart-style).
+- For each product, allow setting quantity.
+- Display as shown in the Vyapar invoice: one row per product with quantity and amount.
+- Show sub-total, total, and "Invoice Amount In Words".
+- The old `checkout/complete/` endpoint still works for single-item sales.
+
+---
+
+### `GET /api/accounts/signature/`
+
+**Purpose:**
+- Retrieve the retailer's uploaded signature image.
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+
+**Response fields:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `has_signature` | boolean | Whether a signature has been uploaded |
+| `signature_image_base64` | string | Base64-encoded signature image (empty string if none) |
+
+### `POST /api/accounts/signature/`
+
+**Purpose:**
+- Upload or update the retailer's signature image.
+
+**Headers:**
+- `Authorization: Bearer <access_token>` (required)
+
+**Request body:**
+
+| Field | Required | Type | Notes |
+|-------|----------|------|-------|
+| `signature_image_base64` | Yes | string | Base64-encoded image data. Can be a data URI like `data:image/png;base64,...` or raw base64. Max 5MB |
+
+**Response fields:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `detail` | string | Success message |
+| `has_signature` | boolean | `true` |
+
+### `DELETE /api/accounts/signature/`
+
+**Purpose:**
+- Remove the retailer's signature image.
+
+**Response fields:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `detail` | string | Success message |
+| `has_signature` | boolean | `false` |
+
+**FE instructions:**
+- Add a "Upload Signature" option in settings/profile.
+- User can upload a signature image (or draw one using a canvas).
+- Convert the image to base64 and send via POST.
+- The signature is rendered at the bottom of generated bills (like the "Authorized Signatory" section in the Vyapar invoice screenshot).
+- Use: `<img src="data:image/png;base64,..." />` to render it.
+
+### Signature in invoice detail
+
+The `GET /api/checkout/invoices/<invoice_number>/` response now includes:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `signature_image_base64` | string | Retailer's signature from their account. Empty string if not uploaded |
+
+**FE instructions:**
+- When rendering an invoice/bill, check if `signature_image_base64` is non-empty.
+- If present, render it in the "Authorized Signatory" section of the bill.
 
 ---

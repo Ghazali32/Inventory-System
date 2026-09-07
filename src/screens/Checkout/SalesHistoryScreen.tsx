@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { useProductStore } from '../../store/product.store';
 import { SoldItemHistory, productAPI } from '../../api/product.api';
-import { exportSalesToExcel } from '../../utils/excelExport';
+import { exportSalesToExcel, downloadServerSalesHistoryExcel, ExportExcelOptions } from '../../utils/excelExport';
+import { toast } from '../../store/toast.store';
 
 interface SalesHistoryScreenProps {
   navigation: any;
@@ -73,22 +75,37 @@ export const SalesHistoryScreen: React.FC<SalesHistoryScreenProps> = ({ navigati
   const { salesHistory, isLoading, fetchSalesHistory } = useProductStore();
   const [refreshing, setRefreshing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
-  const handleExportExcel = async () => {
+  const EXPORT_RANGES: Array<{ label: string; sublabel: string; options: ExportExcelOptions }> = [
+    { label: 'Last 1 Month', sublabel: 'Default 30 days history', options: { months: 1 } },
+    { label: 'Last 2 Months', sublabel: 'Past 60 days history', options: { months: 2 } },
+    { label: 'Last 3 Months', sublabel: 'Quarterly sales history', options: { months: 3 } },
+    { label: 'Last 6 Months', sublabel: 'Half-year sales report', options: { months: 6 } },
+    { label: 'Last 1 Year', sublabel: 'Past 12 months overview', options: { months: 12 } },
+    { label: 'Last Month (Calendar)', sublabel: 'Previous full calendar month', options: { period: 'last_month' } },
+  ];
+
+  const handleExportSelect = async (options: ExportExcelOptions) => {
+    setShowExportModal(false);
     setIsExporting(true);
     try {
-      console.log('Fetching latest 200 sales history items for Excel export...');
-      const response = await productAPI.getCheckoutHistory(200);
-      if (!response.results || response.results.length === 0) {
-        Alert.alert('No Data', 'No sales history available to export.');
-        return;
-      }
-      console.log('Generating Excel sheet for', response.results.length, 'sales items...');
-      await exportSalesToExcel(response.results);
-      Alert.alert('Success', 'Sales report exported successfully!');
+      toast.info('Generating server Excel report...', 'Exporting');
+      await downloadServerSalesHistoryExcel(options);
+      toast.success('Sales report downloaded successfully!');
     } catch (err: any) {
-      console.error('Export failed:', err);
-      Alert.alert('Export Failed', err.message || 'Could not export sales report.');
+      console.warn('Server export failed, attempting client fallback:', err?.message);
+      try {
+        const response = await productAPI.getCheckoutHistory(200);
+        if (response.results && response.results.length > 0) {
+          await exportSalesToExcel(response.results);
+          toast.success('Sales report exported from local cache!');
+        } else {
+          Alert.alert('Export Failed', err.message || 'Could not export sales report.');
+        }
+      } catch (fallbackErr: any) {
+        Alert.alert('Export Failed', err.message || fallbackErr.message || 'Could not export sales report.');
+      }
     } finally {
       setIsExporting(false);
     }
@@ -274,7 +291,7 @@ export const SalesHistoryScreen: React.FC<SalesHistoryScreenProps> = ({ navigati
         <View style={styles.headerRightActions}>
           <TouchableOpacity 
             style={[styles.headerIconBtn, { marginRight: 8 }]} 
-            onPress={handleExportExcel}
+            onPress={() => setShowExportModal(true)}
             disabled={isExporting}
           >
             {isExporting ? (
@@ -315,6 +332,52 @@ export const SalesHistoryScreen: React.FC<SalesHistoryScreenProps> = ({ navigati
           }
         />
       )}
+
+      {/* Export Range Modal */}
+      <Modal
+        visible={showExportModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExportModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowExportModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconWrap}>
+                <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Download Sales Excel</Text>
+                <Text style={styles.modalSubtitle}>Select report period to export</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowExportModal(false)} style={styles.modalCloseBtn}>
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              {EXPORT_RANGES.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.rangeOption}
+                  onPress={() => handleExportSelect(item.options)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.rangeInfo}>
+                    <Text style={styles.rangeTitle}>{item.label}</Text>
+                    <Text style={styles.rangeSubtitle}>{item.sublabel}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -451,4 +514,76 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.button, marginTop: spacing.lg,
   },
   emptyCtaText: { ...typography.bodyMedium, color: colors.textInverse, fontWeight: '600' },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.xl,
+    paddingBottom: spacing['3xl'],
+    maxHeight: '80%',
+    ...shadows.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  modalIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primaryLightest,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    fontSize: 17,
+  },
+  modalSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  modalCloseBtn: {
+    padding: spacing.xs,
+  },
+  modalBody: {
+    gap: spacing.sm,
+  },
+  rangeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  rangeInfo: {
+    flex: 1,
+  },
+  rangeTitle: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  rangeSubtitle: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
 });

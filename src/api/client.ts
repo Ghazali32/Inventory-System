@@ -68,7 +68,7 @@ apiClient.interceptors.response.use(
     console.log('Status:', response.status, response.statusText);
     console.log('URL:', response.config.url);
     console.log('Data:', JSON.stringify(response.data, null, 2));
-    
+
     return response;
   },
   async (error: AxiosError) => {
@@ -77,7 +77,7 @@ apiClient.interceptors.response.use(
     console.log('URL:', error.config?.url);
     console.log('Error Message:', error.message);
     console.log('Response Data:', JSON.stringify(error.response?.data, null, 2));
-    
+
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };

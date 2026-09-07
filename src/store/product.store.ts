@@ -10,6 +10,8 @@ import {
   CheckoutPreviewResponse,
   CheckoutCompletePayload,
   CheckoutCompleteResponse,
+  CheckoutCompleteMultiPayload,
+  CheckoutCompleteMultiResponse,
   SoldItemHistory,
   CheckoutHistoryResponse,
   BillingDetails,
@@ -60,6 +62,7 @@ interface ProductState {
   ) => Promise<ScanForSellingResponse>;
   checkoutPreview: (payload: CheckoutPreviewPayload) => Promise<CheckoutPreviewResponse>;
   checkoutComplete: (payload: CheckoutCompletePayload) => Promise<CheckoutCompleteResponse>;
+  checkoutCompleteMulti: (payload: CheckoutCompleteMultiPayload) => Promise<CheckoutCompleteMultiResponse>;
   fetchSalesHistory: (limit?: number, customerId?: string) => Promise<void>;
   getInvoice: (invoiceNumber: string) => Promise<BillingDetails>;
   searchCustomers: (search?: string, limit?: number) => Promise<CustomerListResponse>;
@@ -510,6 +513,47 @@ export const useProductStore = create<ProductState>((set, get) => ({
         error.response?.data?.message ||
         error.message ||
         'Checkout failed';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Checkout complete multi — POST /api/checkout/complete-multi/
+   * Sells multiple products to a single customer in one invoice
+   */
+  checkoutCompleteMulti: async (payload: CheckoutCompleteMultiPayload) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] checkoutCompleteMulti - Starting');
+
+    try {
+      console.log('📤 [STORE] Calling checkoutCompleteMulti with payload:', payload);
+      const result = await productAPI.checkoutCompleteMulti(payload);
+
+      console.log('✅ [STORE] checkoutCompleteMulti Success');
+      console.log('🧾 Invoice Number:', result.invoice_number);
+
+      // Mark all sold inventory rows as sold in local store
+      if (result.sold_inventory_ids && result.sold_inventory_ids.length > 0) {
+        const soldIdsSet = new Set(result.sold_inventory_ids);
+        set((state) => ({
+          products: state.products.map((p) =>
+            soldIdsSet.has(p.id)
+              ? { ...p, sold: true, sold_datetime: new Date().toISOString() }
+              : p
+          ),
+        }));
+      }
+
+      set({ isLoading: false });
+      return result;
+    } catch (error: any) {
+      console.error('❌ [STORE] checkoutCompleteMulti Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Multi-product checkout failed';
       set({ error: message, isLoading: false });
       throw new Error(message);
     }

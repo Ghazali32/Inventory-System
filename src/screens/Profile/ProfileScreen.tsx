@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { useAuthStore } from '../../store/auth.store';
+import { SignatureModal } from '../../components/SignatureModal';
 
 export const ProfileScreen: React.FC<{navigation: any}> = ({ navigation }) => {
   const { user, logout, isLoading } = useAuthStore();
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -20,6 +22,7 @@ export const ProfileScreen: React.FC<{navigation: any}> = ({ navigation }) => {
 
   const menuItems = [
     { icon: 'business-outline' as const, label: 'Edit Business Profile', onPress: () => navigation.navigate('BusinessProfileForm', { isEditMode: true }) },
+    { icon: 'pencil-outline' as const, label: 'Digital Signature (Invoices)', onPress: () => setShowSignatureModal(true) },
     { icon: 'person-outline' as const, label: 'Account Settings', onPress: () => {} },
     { icon: 'notifications-outline' as const, label: 'Notifications', onPress: () => {} },
     { icon: 'shield-checkmark-outline' as const, label: 'Privacy & Security', onPress: () => {} },
@@ -70,6 +73,11 @@ export const ProfileScreen: React.FC<{navigation: any}> = ({ navigation }) => {
       </TouchableOpacity>
 
       <Text style={styles.version}>InventoryPro v1.0.0</Text>
+
+      <SignatureModal
+        visible={showSignatureModal}
+        onClose={() => setShowSignatureModal(false)}
+      />
     </SafeAreaView>
   );
 };

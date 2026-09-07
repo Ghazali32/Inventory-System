@@ -65,7 +65,8 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
   route,
 }) => {
   const product = route.params?.product as Product;
-  const { checkoutPreview, checkoutComplete, isLoading } = useProductStore();
+  const items = route.params?.items as Array<{ product: Product; quantity: number }> | undefined;
+  const { checkoutPreview, checkoutComplete, checkoutCompleteMulti, isLoading } = useProductStore();
 
   // Customer form state
   const [name, setName] = useState('');
@@ -138,6 +139,81 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
     }
 
     try {
+      const isMulti = items && (items.length > 1 || (items.length === 1 && items[0].quantity > 1));
+
+      if (isMulti) {
+        console.log('🛒 Processing multi-product checkout for', items.length, 'line items');
+        const multiResult = await checkoutCompleteMulti({
+          customer_id: customerId.trim() || undefined,
+          customer_name: name.trim(),
+          customer_phone: phone.trim() || undefined,
+          customer_email: email.trim() || undefined,
+          customer_address: address.trim() || undefined,
+          customer_city: city.trim() || undefined,
+          customer_state: state.trim() || undefined,
+          customer_pincode: pincode.trim() || undefined,
+          payment_mode: 'cash',
+          items: items.map((it) => ({
+            inventory_id: it.product.id,
+            quantity: it.quantity,
+          })),
+        });
+
+        if (!multiResult.sale_completed) {
+          toast.error(multiResult.message || 'Sale could not be completed.');
+          return;
+        }
+
+        const firstProd = items[0].product;
+        const billingDetails: any = {
+          shop_name: 'Your Business',
+          invoice_number: multiResult.invoice_number,
+          invoice_date: multiResult.invoice_date || new Date().toISOString().slice(0, 10),
+          customer_name: name.trim(),
+          customer_address: [address, city, state, pincode].filter(Boolean).join(', '),
+          customer_contact: phone.trim(),
+          customer_gst: '',
+          state_code: '',
+          product_name: multiResult.items[0]?.product_name || firstProd.model,
+          brand_name: multiResult.items[0]?.brand_name || firstProd.brand,
+          model_number: multiResult.items[0]?.model_number || firstProd.model,
+          imei_no_1: multiResult.items[0]?.imei_no_1 || '',
+          imei_no_2: multiResult.items[0]?.imei_no_2 || '',
+          serial_number: '',
+          hsn_sac: '',
+          quantity: multiResult.total_quantity,
+          rate: multiResult.items[0]?.rate || '0.00',
+          amount: multiResult.grand_total,
+          base_amount: multiResult.grand_total,
+          gst_percent: '0',
+          gst_amount: '0',
+          cgst_percent: '0',
+          cgst_amount: '0',
+          sgst_percent: '0',
+          sgst_amount: '0',
+          total_amount: multiResult.grand_total,
+          payment_mode: multiResult.payment_mode || 'cash',
+          cheque_number: '',
+          items: multiResult.items,
+        };
+
+        navigation.navigate('Invoice', {
+          product: firstProd,
+          billingDetails,
+          customer: multiResult.customer || {
+            name: name.trim(),
+            phone_number: phone.trim(),
+            email: email.trim(),
+            address: address.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            pincode: pincode.trim(),
+          },
+          invoiceNumber: multiResult.invoice_number,
+        });
+        return;
+      }
+
       const previewResult = await checkoutPreview({
         inventory_id: product.id,
       });

@@ -95,6 +95,7 @@ export interface CreateProductPayload {
   category: string;
   brand: string;
   model: string;
+  quantity?: number;
   imei1?: string | null;
   imei2?: string | null;
   color?: string;
@@ -108,7 +109,9 @@ export interface CreateProductPayload {
 
 export interface CreateProductResponse {
   action: 'created' | 'quantity_increased';
+  quantity_created?: number;
   product: Product;
+  all_inventory_ids?: number[];
 }
 
 export interface UpdateProductResponse {
@@ -433,6 +436,33 @@ export const productAPI = {
   },
 
   /**
+   * Checkout complete multi — POST /api/checkout/complete-multi/
+   * Sells multiple products to a single customer in one invoice
+   */
+  async checkoutCompleteMulti(payload: CheckoutCompleteMultiPayload): Promise<CheckoutCompleteMultiResponse> {
+    try {
+      console.log('🔵 [API] POST /api/checkout/complete-multi/');
+      console.log('📤 Request Payload:', JSON.stringify(payload, null, 2));
+
+      const response = await apiClient.post<CheckoutCompleteMultiResponse>(
+        '/api/checkout/complete-multi/',
+        payload
+      );
+
+      console.log('✅ [API] Response Status:', response.status);
+      console.log('📥 Response Data:', JSON.stringify(response.data, null, 2));
+
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [API] Error in checkoutCompleteMulti');
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Message:', error.message);
+      throw error;
+    }
+  },
+
+  /**
    * Checkout history — GET /api/checkout/history/
    * Returns sold-items history for the current account
    */
@@ -534,6 +564,55 @@ export interface CheckoutCompleteResponse {
   message: string;
 }
 
+export interface CheckoutMultiItem {
+  inventory_id: number;
+  quantity?: number;
+}
+
+export interface CheckoutCompleteMultiPayload {
+  customer_id?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
+  customer_address?: string;
+  customer_city?: string;
+  customer_state?: string;
+  customer_pincode?: string;
+  payment_mode?: string;
+  items: CheckoutMultiItem[];
+}
+
+export interface MultiSoldItem {
+  sold_item_id: number;
+  product_name: string;
+  brand_name: string;
+  model_number: string;
+  quantity: number;
+  rate: string;
+  amount: string;
+  cgst_percent?: string;
+  cgst_amount?: string;
+  sgst_percent?: string;
+  sgst_amount?: string;
+  total_amount: string;
+  imei_no_1?: string | null;
+  imei_no_2?: string | null;
+  hsn_sac?: string;
+}
+
+export interface CheckoutCompleteMultiResponse {
+  sale_completed: boolean;
+  invoice_number: string;
+  invoice_date: string;
+  customer: SoldCustomer;
+  items: MultiSoldItem[];
+  total_quantity: number;
+  grand_total: string;
+  payment_mode: string;
+  sold_inventory_ids: number[];
+  message: string;
+}
+
 export interface BillingDetails {
   shop_name: string;
   invoice_number: string | null;
@@ -563,6 +642,8 @@ export interface BillingDetails {
   total_amount: string;
   payment_mode: string;
   cheque_number: string;
+  signature_image_base64?: string;
+  items?: MultiSoldItem[];
 }
 
 export interface CheckoutPreviewResponse {

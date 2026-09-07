@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -70,21 +70,56 @@ export const SaleDetailScreen: React.FC<SaleDetailScreenProps> = ({
   navigation,
   route,
 }) => {
-  const sale = route.params?.sale as SoldItemHistory;
+  const initialSale = route.params?.sale as SoldItemHistory | undefined;
+  const invoiceNumber = route.params?.invoiceNumber as string | undefined;
 
-  if (!sale) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>Sale details not found</Text>
-      </SafeAreaView>
-    );
-  }
-
+  const [sale, setSale] = useState<SoldItemHistory | null>(initialSale || null);
+  const [loading, setLoading] = useState(!initialSale && !!invoiceNumber);
   const [loadingInvoice, setLoadingInvoice] = useState(false);
   const getInvoice = useProductStore((s) => s.getInvoice);
 
+  useEffect(() => {
+    if (!sale && invoiceNumber) {
+      const fetchInvoiceDetails = async () => {
+        setLoading(true);
+        try {
+          console.log('Fetching invoice details to populate sale screen:', invoiceNumber);
+          const billing = await getInvoice(invoiceNumber);
+          
+          const mappedSale: SoldItemHistory = {
+            id: (billing as any).sold_item_id || 0,
+            invoice_number: billing.invoice_number,
+            invoice_date: billing.invoice_date,
+            payment_mode: billing.payment_mode || 'CASH',
+            total_amount: billing.total_amount || billing.amount,
+            selling_datetime: billing.invoice_date,
+            quantity: billing.quantity || 1,
+            customer_id: null,
+            customer_name: billing.customer_name || null,
+            customer_contact: billing.customer_contact || null,
+            product_sku: billing.serial_number || '',
+            product_barcode: billing.imei_no_1 || null,
+            product_brand: billing.brand_name || '',
+            product_model: billing.product_name || billing.model_number || '',
+            imei_no_1: billing.imei_no_1 || null,
+            imei_no_2: billing.imei_no_2 || null,
+            inventory_id: (billing as any).inventory_id || null,
+            created_at: billing.invoice_date || new Date().toISOString(),
+          };
+          setSale(mappedSale);
+        } catch (error: any) {
+          console.error('Failed to load sale from invoice number:', error);
+          toast.error(error.message || 'Failed to load sale details.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchInvoiceDetails();
+    }
+  }, [sale, invoiceNumber, getInvoice]);
+
   const handleViewInvoice = async () => {
-    if (!sale.invoice_number) {
+    if (!sale?.invoice_number) {
       toast.error('Invoice number is not available for this sale.');
       return;
     }
@@ -106,6 +141,33 @@ export const SaleDetailScreen: React.FC<SaleDetailScreenProps> = ({
       setLoadingInvoice(false);
     }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContainer]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading sale details...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!sale) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sale Details</Text>
+          <View style={styles.headerIconBtn} />
+        </View>
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color={colors.textTertiary} style={{ marginBottom: spacing.md }} />
+          <Text style={styles.errorText}>Sale details not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -268,6 +330,17 @@ const DetailRow: React.FC<{
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
   header: {
     height: 56, paddingHorizontal: spacing.lg, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'space-between',

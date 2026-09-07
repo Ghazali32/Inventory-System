@@ -2,6 +2,62 @@ import XLSX from 'xlsx';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { SoldItemHistory } from '../api/product.api';
+import { tokenManager } from './tokenManager';
+import { getDeviceId } from './device';
+
+export interface ExportExcelOptions {
+  months?: number;
+  period?: 'last_month';
+}
+
+/**
+ * Downloads server-generated Excel file from GET /api/checkout/history/export/
+ * and opens the native share dialog.
+ */
+export const downloadServerSalesHistoryExcel = async (options: ExportExcelOptions = {}) => {
+  const token = await tokenManager.getAccessToken();
+  if (!token) {
+    throw new Error('You must be logged in to download reports.');
+  }
+
+  const deviceId = await getDeviceId();
+  const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://inventory-system-fk2g.onrender.com';
+
+  const queryParts: string[] = [];
+  if (options.period) {
+    queryParts.push(`period=${encodeURIComponent(options.period)}`);
+  } else if (options.months) {
+    queryParts.push(`months=${options.months}`);
+  } else {
+    queryParts.push('months=1');
+  }
+
+  const downloadUrl = `${baseUrl}/api/checkout/history/export/?${queryParts.join('&')}`;
+  const filename = `sales_history_${Date.now()}.xlsx`;
+  const fileUri = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}${filename}`;
+
+  console.log('📥 Downloading Excel report from:', downloadUrl);
+  const downloadResult = await FileSystem.downloadAsync(downloadUrl, fileUri, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'X-Device-Id': deviceId,
+    },
+  });
+
+  if (downloadResult.status < 200 || downloadResult.status >= 300) {
+    throw new Error(`Failed to download report (HTTP ${downloadResult.status})`);
+  }
+
+  if (await Sharing.isAvailableAsync()) {
+    await Sharing.shareAsync(downloadResult.uri, {
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      dialogTitle: 'Export Sales History Report',
+      UTI: 'com.microsoft.excel.xlsx',
+    });
+  } else {
+    throw new Error('Sharing is not available on this device.');
+  }
+};
 
 /**
  * Formats a number to 2 decimal places or returns '-' if invalid.
