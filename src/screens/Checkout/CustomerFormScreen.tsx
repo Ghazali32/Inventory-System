@@ -153,9 +153,10 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
           customer_state: state.trim() || undefined,
           customer_pincode: pincode.trim() || undefined,
           payment_mode: 'cash',
-          items: items.map((it) => ({
+          items: items.map((it: any) => ({
             inventory_id: it.product.id,
             quantity: it.quantity,
+            rate: it.custom_price !== undefined && it.custom_price !== null ? it.custom_price : undefined,
           })),
         });
 
@@ -214,6 +215,8 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         return;
       }
 
+      const singleCustomRate = (items?.[0] as any)?.custom_price;
+
       const previewResult = await checkoutPreview({
         inventory_id: product.id,
       });
@@ -230,6 +233,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         customer_state: state.trim() || undefined,
         customer_pincode: pincode.trim() || undefined,
         payment_mode: 'cash',
+        rate: singleCustomRate !== undefined && singleCustomRate !== null ? singleCustomRate : undefined,
       });
 
       if (!completeResult.sale_completed) {

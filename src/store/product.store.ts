@@ -17,6 +17,7 @@ import {
   BillingDetails,
   SearchCustomerResult,
   CustomerListResponse,
+  UpdateInvoicePayload,
 } from '../api/product.api';
 
 const normalizeProduct = (product: Product): Product => ({
@@ -65,6 +66,7 @@ interface ProductState {
   checkoutCompleteMulti: (payload: CheckoutCompleteMultiPayload) => Promise<CheckoutCompleteMultiResponse>;
   fetchSalesHistory: (limit?: number, customerId?: string) => Promise<void>;
   getInvoice: (invoiceNumber: string) => Promise<BillingDetails>;
+  updateInvoice: (invoiceNumber: string, payload: UpdateInvoicePayload) => Promise<BillingDetails>;
   searchCustomers: (search?: string, limit?: number) => Promise<CustomerListResponse>;
   clearScanResult: () => void;
   clearError: () => void;
@@ -601,6 +603,30 @@ export const useProductStore = create<ProductState>((set, get) => ({
         error.response?.data?.message ||
         error.message ||
         'Failed to fetch invoice details';
+      set({ error: message, isLoading: false });
+      throw new Error(message);
+    }
+  },
+
+  /**
+   * Edit invoice details — PUT /api/checkout/invoices/<invoice_number>/
+   */
+  updateInvoice: async (invoiceNumber: string, payload: UpdateInvoicePayload) => {
+    set({ isLoading: true, error: null });
+    console.log('🔵 [STORE] updateInvoice - Starting, Invoice Number:', invoiceNumber);
+
+    try {
+      const updatedBilling = await productAPI.updateInvoice(invoiceNumber, payload);
+      console.log('✅ [STORE] updateInvoice Success');
+      set({ isLoading: false });
+      return updatedBilling;
+    } catch (error: any) {
+      console.error('❌ [STORE] updateInvoice Error');
+      const message =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to update invoice';
       set({ error: message, isLoading: false });
       throw new Error(message);
     }

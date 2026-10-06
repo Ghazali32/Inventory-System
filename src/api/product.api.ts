@@ -514,6 +514,35 @@ export const productAPI = {
       throw error;
     }
   },
+
+  /**
+   * Edit invoice details — PUT /api/checkout/invoices/<invoice_number>/
+   */
+  async updateInvoice(
+    invoiceNumber: string,
+    payload: UpdateInvoicePayload
+  ): Promise<BillingDetails> {
+    try {
+      console.log('🔵 [API] PUT /api/checkout/invoices/' + invoiceNumber + '/');
+      console.log('📤 Request Payload:', JSON.stringify(payload, null, 2));
+
+      const response = await apiClient.put<BillingDetails>(
+        `/api/checkout/invoices/${invoiceNumber}/`,
+        payload
+      );
+
+      console.log('✅ [API] Response Status:', response.status);
+      console.log('📥 Response Data:', JSON.stringify(response.data, null, 2));
+
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ [API] Error in updateInvoice');
+      console.error('Status:', error.response?.status);
+      console.error('Data:', error.response?.data);
+      console.error('Message:', error.message);
+      throw error;
+    }
+  },
 };
 
 // ---------- Selling / Checkout Types ----------
@@ -553,6 +582,8 @@ export interface CheckoutCompletePayload {
   customer_state?: string;
   customer_pincode?: string;
   payment_mode?: string;
+  rate?: number | string;
+  custom_price?: number | string;
 }
 
 export interface CheckoutCompleteResponse {
@@ -567,6 +598,8 @@ export interface CheckoutCompleteResponse {
 export interface CheckoutMultiItem {
   inventory_id: number;
   quantity?: number;
+  rate?: number | string;
+  custom_price?: number | string;
 }
 
 export interface CheckoutCompleteMultiPayload {
@@ -580,6 +613,30 @@ export interface CheckoutCompleteMultiPayload {
   customer_pincode?: string;
   payment_mode?: string;
   items: CheckoutMultiItem[];
+}
+
+export interface UpdateInvoiceItemPayload {
+  id: number;
+  product_name?: string;
+  brand_name?: string;
+  model_number?: string;
+  quantity?: number;
+  rate?: number | string;
+  amount?: number | string;
+}
+
+export interface UpdateInvoicePayload {
+  shop_name?: string;
+  gstin?: string;
+  shop_address?: string;
+  shop_contact?: string;
+  customer_name?: string;
+  customer_contact?: string;
+  customer_address?: string;
+  customer_gst?: string;
+  invoice_date?: string;
+  payment_mode?: string;
+  items?: UpdateInvoiceItemPayload[];
 }
 
 export interface MultiSoldItem {

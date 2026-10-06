@@ -3,7 +3,8 @@ import { tokenManager } from '../utils/tokenManager';
 import { getDeviceId } from '../utils/device';
 
 // Use environment variable or fallback
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.example.com';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.example.com';
+export const getApiBaseUrl = (): string => BASE_URL;
 
 // Create axios instance
 const apiClient = axios.create({

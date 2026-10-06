@@ -26,6 +26,7 @@ interface CheckoutPreviewScreenProps {
 interface CartItem {
   product: Product;
   quantity: number;
+  custom_price?: number | string;
 }
 
 const toDisplay = (value: unknown): string => {
@@ -41,7 +42,13 @@ const toCurrency = (value: unknown): string => {
   return `₹${num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-const getItemUnitPrice = (product: Product): number => {
+const getItemUnitPrice = (product: Product, custom_price?: number | string): number => {
+  if (custom_price !== undefined && custom_price !== null && String(custom_price).trim() !== '') {
+    const numCustom = Number(custom_price);
+    if (!Number.isNaN(numCustom) && numCustom >= 0) {
+      return numCustom;
+    }
+  }
   const p = product.mop_including_gst ?? product.mrp ?? product.msp ?? product.buying_price;
   const num = Number(p);
   return Number.isNaN(num) ? 0 : num;
@@ -66,6 +73,10 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
   const [cartItems, setCartItems] = useState<CartItem[]>(initialItems);
   const [showAddModal, setShowAddModal] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
+
+  // Custom price override modal state
+  const [editingPriceIndex, setEditingPriceIndex] = useState<number | null>(null);
+  const [customPriceInput, setCustomPriceInput] = useState<string>('');
 
   useEffect(() => {
     if (storeProducts.length === 0) {
@@ -147,10 +158,46 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
     setShowAddModal(false);
   };
 
+  const handleOpenPriceModal = (index: number) => {
+    const item = cartItems[index];
+    const currentPrice = getItemUnitPrice(item.product, item.custom_price);
+    setEditingPriceIndex(index);
+    setCustomPriceInput(String(currentPrice));
+  };
+
+  const handleSaveCustomPrice = () => {
+    if (editingPriceIndex === null) return;
+    const num = Number(customPriceInput);
+    if (Number.isNaN(num) || num < 0) {
+      toast.warn('Please enter a valid price.', 'Invalid Price');
+      return;
+    }
+
+    setCartItems((prev) => {
+      const updated = [...prev];
+      updated[editingPriceIndex] = {
+        ...updated[editingPriceIndex],
+        custom_price: num,
+      };
+      return updated;
+    });
+    toast.success(`Custom price ₹${num} set for line item.`);
+    setEditingPriceIndex(null);
+  };
+
+  const handleResetCustomPrice = (index: number) => {
+    setCartItems((prev) => {
+      const updated = [...prev];
+      delete updated[index].custom_price;
+      return updated;
+    });
+    toast.info('Restored default inventory selling price.');
+  };
+
   // Calculations
   const totalUnits = cartItems.reduce((sum, it) => sum + it.quantity, 0);
   const totalGrandAmount = cartItems.reduce(
-    (sum, it) => sum + getItemUnitPrice(it.product) * it.quantity,
+    (sum, it) => sum + getItemUnitPrice(it.product, it.custom_price) * it.quantity,
     0
   );
 
@@ -229,7 +276,9 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
         </View>
 
         {cartItems.map((item, idx) => {
-          const unitPrice = getItemUnitPrice(item.product);
+          const unitPrice = getItemUnitPrice(item.product, item.custom_price);
+          const defaultPrice = getItemUnitPrice(item.product);
+          const isCustomRate = item.custom_price !== undefined && item.custom_price !== null;
           const lineTotal = unitPrice * item.quantity;
           const hasIMEI = !!(item.product.imei1 || item.product.imei2);
 
@@ -242,6 +291,11 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
                     {item.product.category && (
                       <View style={styles.categoryBadge}>
                         <Text style={styles.categoryBadgeText}>{item.product.category}</Text>
+                      </View>
+                    )}
+                    {isCustomRate && (
+                      <View style={styles.customRateBadge}>
+                        <Text style={styles.customRateBadgeText}>Custom Price</Text>
                       </View>
                     )}
                   </View>
@@ -274,9 +328,25 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
 
               <View style={styles.itemFooter}>
                 <View style={styles.itemPricing}>
-                  <Text style={styles.itemUnitPriceLabel}>
-                    {toCurrency(unitPrice)} / unit
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.itemUnitPriceLabel}>
+                      {toCurrency(unitPrice)} / unit
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.priceEditIconBtn}
+                      onPress={() => handleOpenPriceModal(idx)}
+                    >
+                      <Ionicons name="pencil" size={14} color={colors.primary} />
+                    </TouchableOpacity>
+                    {isCustomRate && (
+                      <TouchableOpacity
+                        onPress={() => handleResetCustomPrice(idx)}
+                        style={styles.priceResetBtn}
+                      >
+                        <Ionicons name="refresh" size={12} color={colors.textTertiary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <Text style={styles.itemLineTotal}>
                     {toCurrency(lineTotal)}
                   </Text>
@@ -470,6 +540,60 @@ export const CheckoutPreviewScreen: React.FC<CheckoutPreviewScreenProps> = ({
           />
         </SafeAreaView>
       </Modal>
+
+      {/* Edit Custom Price Modal */}
+      <Modal
+        visible={editingPriceIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingPriceIndex(null)}
+      >
+        <View style={styles.priceModalOverlay}>
+          <View style={styles.priceModalBox}>
+            <View style={styles.priceModalHeader}>
+              <Text style={styles.priceModalTitle}>Override Selling Price</Text>
+              <TouchableOpacity onPress={() => setEditingPriceIndex(null)}>
+                <Ionicons name="close" size={20} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {editingPriceIndex !== null && (
+              <Text style={styles.priceModalSub}>
+                Item: {cartItems[editingPriceIndex]?.product.brand} {cartItems[editingPriceIndex]?.product.model}
+              </Text>
+            )}
+
+            <View style={styles.priceInputWrap}>
+              <Text style={styles.currencySymbol}>₹</Text>
+              <TextInput
+                style={styles.priceInput}
+                keyboardType="numeric"
+                value={customPriceInput}
+                onChangeText={setCustomPriceInput}
+                placeholder="Enter selling price"
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+              />
+            </View>
+
+            <View style={styles.priceModalActions}>
+              <TouchableOpacity
+                style={styles.priceCancelBtn}
+                onPress={() => setEditingPriceIndex(null)}
+              >
+                <Text style={styles.priceCancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.priceSaveBtn}
+                onPress={handleSaveCustomPrice}
+              >
+                <Text style={styles.priceSaveBtnText}>Apply Custom Rate</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -482,6 +606,106 @@ const DetailRow: React.FC<{ label: string; value: string }> = ({ label, value })
 );
 
 const styles = StyleSheet.create({
+  customRateBadge: {
+    backgroundColor: colors.warningLight,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: borderRadius.sm,
+  },
+  customRateBadgeText: {
+    ...typography.caption,
+    color: colors.warningDark || colors.warning,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  priceEditIconBtn: {
+    padding: 3,
+    backgroundColor: colors.primaryLightest,
+    borderRadius: borderRadius.sm,
+  },
+  priceResetBtn: {
+    padding: 3,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: borderRadius.sm,
+  },
+  priceModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  priceModalBox: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    ...shadows.md,
+  },
+  priceModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  priceModalTitle: {
+    ...typography.subtitle,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  priceModalSub: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  priceInputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.surfaceAlt,
+  },
+  currencySymbol: {
+    ...typography.heading3,
+    color: colors.primary,
+    marginRight: spacing.xs,
+  },
+  priceInput: {
+    flex: 1,
+    ...typography.heading3,
+    color: colors.text,
+    paddingVertical: 0,
+  },
+  priceModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+  },
+  priceCancelBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.button,
+  },
+  priceCancelBtnText: {
+    ...typography.bodyMedium,
+    color: colors.textSecondary,
+  },
+  priceSaveBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.button,
+  },
+  priceSaveBtnText: {
+    ...typography.bodyMedium,
+    color: colors.textInverse,
+    fontWeight: '700',
+  },
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     height: 58,
