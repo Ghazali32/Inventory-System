@@ -475,6 +475,26 @@ Important:
 - `recent_activity` restock rows are derived from `ProductInventory.inventory_entry_datetime` because the backend does not yet keep a separate restock audit table.
 - The endpoint is protected by `Authorization` and `X-Device-Id` like the rest of the business APIs.
 
+### `GET /api/products/`
+
+Fetch inventory products for the active account (supports grouping and sold status filtering).
+
+Query params:
+
+| Param | Required | Type | Notes |
+|-------|----------|------|------|
+| `sold` | No | string | `true` / `sold` for **Sold** tab, `false` / `instock` for **In Stock** tab. If omitted, returns ALL items (both sold and unsold) with `"sold": true/false` flag |
+| `status` | No | string | Alias for `sold` (e.g. `status=sold` or `status=unsold`) |
+| `tab` | No | string | Alias for `sold` (e.g. `tab=sold` or `tab=instock`) |
+| `raw` | No | string | Set `true` to disable product master grouping and get individual item rows |
+
+FE Instructions:
+- Calling `GET /api/products/` without parameters now returns **all** products (unsold items with `"sold": false` and sold items with `"sold": true`).
+- If filtering in FE:
+  - **In Stock Tab**: Filter items where `product.sold === false` (or request `GET /api/products/?sold=false`).
+  - **Sold Tab**: Filter items where `product.sold === true` (or request `GET /api/products/?sold=true`).
+- **Sales History Page**: Call `GET /api/checkout/history/` to get invoice-level sale records.
+
 ### `GET /api/checkout/history/`
 
 Returns sold-items history for the currently authenticated account (retailer).
