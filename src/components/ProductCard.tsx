@@ -27,6 +27,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     return 'cube-outline';
   };
 
+  const soldQty = product.sold_quantity || product.units_sold || product.sold_count || (product.quantity && product.quantity > 0 ? product.quantity : 1);
+  const displayQty = product.sold ? soldQty : (product.available_quantity ?? product.quantity ?? 1);
+  const qtyLabel = product.sold ? 'Sold' : 'Qty';
+
   return (
     <TouchableOpacity
       style={[
@@ -84,14 +88,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* Quantity Badge */}
+      {/* Quantity / Sold Badge */}
       <View style={styles.quantityContainer}>
         <View style={[styles.quantityBadge, product.sold && styles.quantityBadgeSold]}>
           <Text style={[styles.quantityText, product.sold && styles.quantityTextSold]}>
-            {product.sold ? 0 : (product.quantity ?? 1)}
+            {displayQty}
           </Text>
         </View>
-        <Text style={styles.quantityLabel}>Qty</Text>
+        <Text style={styles.quantityLabel}>{qtyLabel}</Text>
       </View>
 
       {/* Chevron */}

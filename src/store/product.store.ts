@@ -20,10 +20,18 @@ import {
   UpdateInvoicePayload,
 } from '../api/product.api';
 
-const normalizeProduct = (product: Product): Product => ({
-  ...product,
-  quantity: product.quantity ?? (product.sold ? 0 : 1),
-});
+const normalizeProduct = (product: Product): Product => {
+  const isSold = Boolean(
+    product.sold ||
+    (product as any).status === 'sold' ||
+    (product as any).is_sold === true
+  );
+  return {
+    ...product,
+    sold: isSold,
+    quantity: product.quantity ?? (isSold ? 0 : 1),
+  };
+};
 
 interface ProductState {
   products: Product[];
@@ -32,7 +40,7 @@ interface ProductState {
   error: string | null;
   lastScanResult: ScanIngestResponse | null;
 
-  fetchProducts: () => Promise<void>;
+  fetchProducts: (params?: { sold?: boolean; status?: string }) => Promise<void>;
   fetchProductDetail: (productId: number) => Promise<Product>;
   addProduct: (product: Product) => void;
   updateProductQuantity: (productId: string, newQuantity: number) => void;
@@ -79,22 +87,35 @@ export const useProductStore = create<ProductState>((set, get) => ({
   error: null,
   lastScanResult: null,
 
-  fetchProducts: async () => {
+  fetchProducts: async (params?: { sold?: boolean; status?: string }) => {
     set({ isLoading: true, error: null });
-    console.log('🔵 [STORE] fetchProducts - Starting');
+    console.log('🔵 [STORE] fetchProducts - Starting with params:', params);
     try {
-      console.log('📤 [STORE] Calling productAPI.getProducts()');
-      const products = (await productAPI.getProducts()).map(normalizeProduct);
-      console.log('✅ [STORE] fetchProducts Success');
-      console.log('📦 Products count:', products.length);
-      set({ products, isLoading: false });
-    } catch (error: any) {
-      console.error('❌ [STORE] fetchProducts Error');
-      console.error('Error Details:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
+      console.log('📤 [STORE] Calling productAPI.getProducts(params)');
+      const rawProducts = await productAPI.getProducts(params);
+      const products = rawProducts.map(normalizeProduct);
+      console.log('✅ [STORE] fetchProducts Success. Count:', products.length);
+
+      set((state) => {
+        if (params?.sold === true || params?.status === 'sold') {
+          const inStockItems = state.products.filter((p) => !p.sold);
+          const soldItems = products.map(p => ({ ...p, sold: true }));
+          return { products: [...inStockItems, ...soldItems], isLoading: false };
+        } else if (
+          params?.sold === false ||
+          params?.status === 'in_stock' ||
+          params?.status === 'instock' ||
+          params?.status === 'unsold'
+        ) {
+          const soldItems = state.products.filter((p) => p.sold);
+          const inStockItems = products.map(p => ({ ...p, sold: false }));
+          return { products: [...inStockItems, ...soldItems], isLoading: false };
+        }
+        // No filter specified — backend returns all products (both sold and in-stock)
+        return { products, isLoading: false };
       });
+    } catch (error: any) {
+      console.error('❌ [STORE] fetchProducts Error:', error.message);
       const message =
         error.response?.data?.detail ||
         error.message ||

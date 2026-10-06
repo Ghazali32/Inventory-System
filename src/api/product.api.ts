@@ -28,6 +28,10 @@ export interface Product {
   price_breakdown?: PriceBreakdown | null;
   color?: string;
   sold?: boolean;
+  sold_quantity?: number;
+  units_sold?: number;
+  sold_count?: number;
+  available_quantity?: number;
   sold_datetime?: string | null;
   inventory_entry_datetime?: string;
   created_at: string;
@@ -123,22 +127,30 @@ export interface UpdateProductResponse {
 
 export const productAPI = {
   /**
-   * Fetch all products for a customer
-   * GET /api/products/
+   * Fetch products for a customer (with optional filtering by sold/status)
+   * GET /api/products/?sold=true|false or ?status=sold|in_stock
    */
-  async getProducts(): Promise<Product[]> {
+  async getProducts(params?: { sold?: boolean; status?: string }): Promise<Product[]> {
     try {
-      console.log('🔵 [API] GET /api/products/');
-      console.log('📤 Request: No payload (GET request)');
-      
+      const queryParams: string[] = [];
+      if (params?.sold !== undefined) {
+        queryParams.push(`sold=${params.sold}`);
+      }
+      if (params?.status) {
+        queryParams.push(`status=${encodeURIComponent(params.status)}`);
+      }
+      const queryStr = queryParams.length ? '?' + queryParams.join('&') : '';
+      console.log('🔵 [API] GET /api/products/' + queryStr);
+      console.log('📤 Request params:', params);
+
       const response = await apiClient.get<Product[]>(
-        '/api/products/'
+        `/api/products/${queryStr}`
       );
-      
+
       console.log('✅ [API] Response Status:', response.status);
-      console.log('📥 Response Data:', response.data);
-      
-      // Backend returns array directly
+      console.log('📥 Response Data count:', Array.isArray(response.data) ? response.data.length : (response.data as any)?.results?.length);
+
+      // Backend returns array directly or paginated object
       return Array.isArray(response.data)
         ? response.data
         : (response.data as any).results ?? [];
