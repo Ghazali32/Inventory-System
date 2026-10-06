@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +13,9 @@ import {
   Linking,
   Modal,
   TextInput,
+  Linking,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,10 +23,13 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { colors, typography, spacing, borderRadius, shadows } from '../../theme';
 import { BillingDetails, Product, UpdateInvoicePayload } from '../../api/product.api';
+import { BillingDetails, Product, UpdateInvoicePayload } from '../../api/product.api';
 import { useAuthStore } from '../../store/auth.store';
+import { useProductStore } from '../../store/product.store';
 import { useProductStore } from '../../store/product.store';
 import { toast } from '../../store/toast.store';
 import { numberToWords } from '../../utils/numberToWords';
+import { getApiBaseUrl } from '../../api/client';
 import { getApiBaseUrl } from '../../api/client';
 
 interface InvoiceScreenProps {
@@ -597,21 +604,19 @@ const generateInvoiceHTML = (
               </tr>
             </thead>
             <tbody>
-              ${
-                pricing.items && pricing.items.length > 0
-                  ? pricing.items
-                      .map(
-                        (it, idx) => `
+              ${pricing.items && pricing.items.length > 0
+      ? pricing.items
+        .map(
+          (it, idx) => `
                     <tr>
                       <td>${idx + 1}</td>
                       <td>
                         <strong>${it.brand_name || ''} ${it.product_name || ''}</strong><br/>
                         <span style="font-size:11px;color:#6B7280">Model: ${it.model_number || ''}</span>
-                        ${
-                          it.imei_no_1 || it.imei_no_2
-                            ? `<br/><span style="font-size:10px;font-family:monospace;color:#4B5563">IMEI: ${[it.imei_no_1, it.imei_no_2].filter(Boolean).join(', ')}</span>`
-                            : ''
-                        }
+                        ${it.imei_no_1 || it.imei_no_2
+              ? `<br/><span style="font-size:10px;font-family:monospace;color:#4B5563">IMEI: ${[it.imei_no_1, it.imei_no_2].filter(Boolean).join(', ')}</span>`
+              : ''
+            }
                       </td>
                       <td>${it.hsn_sac || '-'}</td>
                       <td>${it.quantity}</td>
@@ -619,9 +624,9 @@ const generateInvoiceHTML = (
                       <td><strong>₹${safeNumber(it.amount || it.total_amount).toLocaleString('en-IN')}</strong></td>
                     </tr>
                   `
-                      )
-                      .join('')
-                  : `
+        )
+        .join('')
+      : `
                     <tr>
                       <td>1</td>
                       <td>
@@ -634,17 +639,16 @@ const generateInvoiceHTML = (
                       <td><strong>₹${pricing.totalAmount.toLocaleString('en-IN')}</strong></td>
                     </tr>
                   `
-              }
+    }
             </tbody>
           </table>
-          ${
-            !billing.items && (billing.imei_no_1 || billing.imei_no_2)
-              ? `<div class="imei-row">
+          ${!billing.items && (billing.imei_no_1 || billing.imei_no_2)
+      ? `<div class="imei-row">
                   ${billing.imei_no_1 ? `<span><span class="imei-label">IMEI 1:</span> ${billing.imei_no_1}</span>` : ''}
                   ${billing.imei_no_2 ? `<span><span class="imei-label">IMEI 2:</span> ${billing.imei_no_2}</span>` : ''}
                 </div>`
-              : ''
-          }
+      : ''
+    }
         </div>
 
         <!-- Summary & Words Section -->
@@ -663,22 +667,20 @@ const generateInvoiceHTML = (
               <span class="summary-label">GST (${pricing.gstPercent}%)</span>
               <span class="summary-value">₹${pricing.gstAmount.toLocaleString('en-IN')}</span>
             </div>
-            ${
-              pricing.cgstAmount > 0
-                ? `<div class="summary-row">
+            ${pricing.cgstAmount > 0
+      ? `<div class="summary-row">
                     <span class="summary-label">CGST (${pricing.cgstPercent}%)</span>
                     <span class="summary-value">₹${pricing.cgstAmount.toLocaleString('en-IN')}</span>
                   </div>`
-                : ''
-            }
-            ${
-              pricing.sgstAmount > 0
-                ? `<div class="summary-row">
+      : ''
+    }
+            ${pricing.sgstAmount > 0
+      ? `<div class="summary-row">
                     <span class="summary-label">SGST (${pricing.sgstPercent}%)</span>
                     <span class="summary-value">₹${pricing.sgstAmount.toLocaleString('en-IN')}</span>
                   </div>`
-                : ''
-            }
+      : ''
+    }
             <div class="summary-total">
               <div class="summary-row" style="border:none;padding:0;background:transparent;">
                 <span class="summary-label">Total</span>
@@ -696,11 +698,10 @@ const generateInvoiceHTML = (
 
           <div class="signatory-box">
             <div class="signatory-signature-wrap">
-              ${
-                signatureBase64 || billing.signature_image_base64
-                  ? `<img src="${signatureBase64 || billing.signature_image_base64}" class="signatory-signature-img" alt="Authorized Signatory" />`
-                  : `<div style="width: 140px; height: 1px; border-bottom: 1px dashed #9CA3AF; margin-top: 30px;"></div>`
-              }
+              ${signatureBase64 || billing.signature_image_base64
+      ? `<img src="${signatureBase64 || billing.signature_image_base64}" class="signatory-signature-img" alt="Authorized Signatory" />`
+      : `<div style="width: 140px; height: 1px; border-bottom: 1px dashed #9CA3AF; margin-top: 30px;"></div>`
+    }
             </div>
             <div class="signatory-firm">For ${shopName}</div>
             <div class="signatory-title">Authorized Signatory</div>
@@ -723,16 +724,34 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
   route,
 }) => {
   const initialBillingDetails = route.params?.billingDetails as BillingDetails;
+  const initialBillingDetails = route.params?.billingDetails as BillingDetails;
   const product = route.params?.product as Product;
   const customer = route.params?.customer;
   const invoiceNumber = route.params?.invoiceNumber as string | undefined;
   const profile = useAuthStore((s) => s.profile);
   const signatureImage = useAuthStore((s) => s.signatureImage);
   const updateInvoice = useProductStore((s) => s.updateInvoice);
+  const updateInvoice = useProductStore((s) => s.updateInvoice);
 
+  const [billingDetailsState, setBillingDetailsState] = useState<BillingDetails | null>(initialBillingDetails || null);
   const [billingDetailsState, setBillingDetailsState] = useState<BillingDetails | null>(initialBillingDetails || null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [isUpdatingInvoice, setIsUpdatingInvoice] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  // Edit form state
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerContact, setEditCustomerContact] = useState('');
+  const [editCustomerAddress, setEditCustomerAddress] = useState('');
+  const [editCustomerGst, setEditCustomerGst] = useState('');
+  const [editInvoiceDate, setEditInvoiceDate] = useState('');
+  const [editPaymentMode, setEditPaymentMode] = useState('');
+  const [editShopName, setEditShopName] = useState('');
+  const [editShopContact, setEditShopContact] = useState('');
+  const [editShopAddress, setEditShopAddress] = useState('');
+  const [editGstin, setEditGstin] = useState('');
+  const [editRate, setEditRate] = useState('');
   const [isUpdatingInvoice, setIsUpdatingInvoice] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -752,873 +771,1137 @@ export const InvoiceScreen: React.FC<InvoiceScreenProps> = ({
   const isViewOnly = route.params?.isViewOnly as boolean | undefined;
 
   if (!billingDetailsState) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>Invoice data not available</Text>
-      </SafeAreaView>
-    );
-  }
-
-  const finalBilling = invoiceNumber
-    ? { ...billingDetailsState, invoice_number: invoiceNumber }
-    : billingDetailsState;
-
-  const pricing = resolveInvoicePricing(finalBilling, product);
-
-  const effectiveSignature = finalBilling.signature_image_base64 || signatureImage;
-
-  const handleOpenEditModal = () => {
-    setEditCustomerName(finalBilling.customer_name || '');
-    setEditCustomerContact(finalBilling.customer_contact || '');
-    setEditCustomerAddress(finalBilling.customer_address || '');
-    setEditCustomerGst(finalBilling.customer_gst || '');
-    setEditInvoiceDate(finalBilling.invoice_date || new Date().toISOString().slice(0, 10));
-    setEditPaymentMode(finalBilling.payment_mode || 'cash');
-    setEditShopName(profile?.shop_name || finalBilling.shop_name || '');
-    setEditShopContact(profile?.shop_phone || finalBilling.customer_contact || '');
-    setEditShopAddress(profile ? [profile.shop_address, profile.shop_city, profile.shop_state].filter(Boolean).join(', ') : '');
-    setEditGstin(profile?.gst_registration_number || '');
-    setEditRate(String(pricing.rate || ''));
-    setShowEditModal(true);
-  };
-
-  const handleSaveInvoiceEdit = async () => {
-    const invNo = finalBilling.invoice_number;
-    if (!invNo) {
-      toast.error('Invoice number is not available to edit.');
-      return;
+    if (!billingDetailsState) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <Text style={styles.errorText}>Invoice data not available</Text>
+        </SafeAreaView>
+      );
     }
 
-    setIsUpdatingInvoice(true);
-    try {
-      const payload: UpdateInvoicePayload = {
-        customer_name: editCustomerName.trim() || undefined,
-        customer_contact: editCustomerContact.trim() || undefined,
-        customer_address: editCustomerAddress.trim() || undefined,
-        customer_gst: editCustomerGst.trim() || undefined,
-        invoice_date: editInvoiceDate.trim() || undefined,
-        payment_mode: editPaymentMode.trim().toLowerCase() || undefined,
-        shop_name: editShopName.trim() || undefined,
-        shop_contact: editShopContact.trim() || undefined,
-        shop_address: editShopAddress.trim() || undefined,
-        gstin: editGstin.trim() || undefined,
-      };
+    const finalBilling = invoiceNumber
+      ? { ...billingDetailsState, invoice_number: invoiceNumber }
+      : billingDetailsState;
 
-      const newRateNum = safeNumber(editRate);
+    const pricing = resolveInvoicePricing(finalBilling, product);
 
-      if (finalBilling.items && finalBilling.items.length > 0) {
-        payload.items = finalBilling.items.map((item, idx) => {
-          const itemQty = safeNumber(item.quantity, 1);
-          const itemRate = idx === 0 && newRateNum > 0 ? newRateNum : safeNumber(item.rate, newRateNum);
-          return {
-            id: item.sold_item_id,
-            product_name: item.product_name,
-            quantity: itemQty,
-            rate: itemRate,
-            amount: itemRate * itemQty,
-          };
-        });
-      } else {
-        const itemQty = safeNumber(finalBilling.quantity, 1);
-        const itemRate = newRateNum > 0 ? newRateNum : safeNumber(finalBilling.rate);
-        payload.items = [
-          {
-            id: (finalBilling as any).sold_item_id || (finalBilling as any).id || 1,
-            product_name: finalBilling.product_name || finalBilling.model_number || 'Product',
-            quantity: itemQty,
-            rate: itemRate,
-            amount: itemRate * itemQty,
-          },
-        ];
+    const effectiveSignature = finalBilling.signature_image_base64 || signatureImage;
+
+    const handleOpenEditModal = () => {
+      setEditCustomerName(finalBilling.customer_name || '');
+      setEditCustomerContact(finalBilling.customer_contact || '');
+      setEditCustomerAddress(finalBilling.customer_address || '');
+      setEditCustomerGst(finalBilling.customer_gst || '');
+      setEditInvoiceDate(finalBilling.invoice_date || new Date().toISOString().slice(0, 10));
+      setEditPaymentMode(finalBilling.payment_mode || 'cash');
+      setEditShopName(profile?.shop_name || finalBilling.shop_name || '');
+      setEditShopContact(profile?.shop_phone || finalBilling.customer_contact || '');
+      setEditShopAddress(profile ? [profile.shop_address, profile.shop_city, profile.shop_state].filter(Boolean).join(', ') : '');
+      setEditGstin(profile?.gst_registration_number || '');
+      setEditRate(String(pricing.rate || ''));
+      setShowEditModal(true);
+    };
+
+    const handleSaveInvoiceEdit = async () => {
+      const invNo = finalBilling.invoice_number;
+      if (!invNo) {
+        toast.error('Invoice number is not available to edit.');
+        return;
       }
 
-      const updated: any = await updateInvoice(invNo, payload);
+      setIsUpdatingInvoice(true);
+      try {
+        const payload: UpdateInvoicePayload = {
+          customer_name: editCustomerName.trim() || undefined,
+          customer_contact: editCustomerContact.trim() || undefined,
+          customer_address: editCustomerAddress.trim() || undefined,
+          customer_gst: editCustomerGst.trim() || undefined,
+          invoice_date: editInvoiceDate.trim() || undefined,
+          payment_mode: editPaymentMode.trim().toLowerCase() || undefined,
+          shop_name: editShopName.trim() || undefined,
+          shop_contact: editShopContact.trim() || undefined,
+          shop_address: editShopAddress.trim() || undefined,
+          gstin: editGstin.trim() || undefined,
+        };
 
-      setBillingDetailsState((prev: any) => {
-        const merged = { ...prev, ...updated };
+        const newRateNum = safeNumber(editRate);
 
-        // Safe Response State Update
-        const resRate = updated?.rate ?? updated?.items?.[0]?.rate ?? (newRateNum > 0 ? newRateNum : prev?.rate);
-        const resAmount = updated?.amount ?? updated?.items?.[0]?.amount ?? (newRateNum > 0 ? newRateNum * safeNumber(merged.quantity, 1) : prev?.amount);
-        const resTotal = updated?.total_amount ?? updated?.grand_total ?? updated?.items?.[0]?.total_amount ?? (newRateNum > 0 ? newRateNum * safeNumber(merged.quantity, 1) : prev?.total_amount);
-
-        merged.rate = String(safeNumber(resRate));
-        merged.amount = String(safeNumber(resAmount));
-        merged.total_amount = String(safeNumber(resTotal));
-
-        if (updated?.items && updated.items.length > 0) {
-          merged.items = updated.items.map((it: any) => ({
-            ...it,
-            rate: safeNumber(it.rate ?? resRate),
-            amount: safeNumber(it.amount ?? resAmount),
-            total_amount: safeNumber(it.total_amount ?? it.amount ?? resTotal),
-          }));
+        if (finalBilling.items && finalBilling.items.length > 0) {
+          payload.items = finalBilling.items.map((item, idx) => {
+            const itemQty = safeNumber(item.quantity, 1);
+            const itemRate = idx === 0 && newRateNum > 0 ? newRateNum : safeNumber(item.rate, newRateNum);
+            return {
+              id: item.sold_item_id,
+              product_name: item.product_name,
+              quantity: itemQty,
+              rate: itemRate,
+              amount: itemRate * itemQty,
+            };
+          });
+        } else {
+          const itemQty = safeNumber(finalBilling.quantity, 1);
+          const itemRate = newRateNum > 0 ? newRateNum : safeNumber(finalBilling.rate);
+          payload.items = [
+            {
+              id: (finalBilling as any).sold_item_id || (finalBilling as any).id || 1,
+              product_name: finalBilling.product_name || finalBilling.model_number || 'Product',
+              quantity: itemQty,
+              rate: itemRate,
+              amount: itemRate * itemQty,
+            },
+          ];
         }
 
-        return merged as BillingDetails;
-      });
+        const updated: any = await updateInvoice(invNo, payload);
 
-      setShowEditModal(false);
-      toast.success('Invoice updated successfully!', 'Bill Updated');
-    } catch (err: any) {
-      console.error('Failed to update invoice:', err);
-      toast.error(err.message || 'Failed to edit invoice details.');
-    } finally {
-      setIsUpdatingInvoice(false);
-    }
-  };
+        setBillingDetailsState((prev: any) => {
+          const merged = { ...prev, ...updated };
 
-  const handleOpenServerPDF = async () => {
-    const invNo = finalBilling.invoice_number;
-    if (!invNo) {
-      toast.warn('Invoice number not generated yet.');
-      return;
-    }
-    const baseUrl = getApiBaseUrl();
-    const pdfUrl = `${baseUrl}/api/checkout/invoices/${encodeURIComponent(invNo)}/pdf/`;
-    console.log('Opening server PDF endpoint URL:', pdfUrl);
-    try {
-      const supported = await Linking.canOpenURL(pdfUrl);
-      if (supported) {
-        await Linking.openURL(pdfUrl);
-      } else {
-        await Linking.openURL(pdfUrl);
-      }
-    } catch (err: any) {
-      console.error('Failed to open PDF URL in browser:', err);
-      toast.error(err.message || 'Unable to open PDF preview.');
-    }
-  };
+          // Safe Response State Update
+          const resRate = updated?.rate ?? updated?.items?.[0]?.rate ?? (newRateNum > 0 ? newRateNum : prev?.rate);
+          const resAmount = updated?.amount ?? updated?.items?.[0]?.amount ?? (newRateNum > 0 ? newRateNum * safeNumber(merged.quantity, 1) : prev?.amount);
+          const resTotal = updated?.total_amount ?? updated?.grand_total ?? updated?.items?.[0]?.total_amount ?? (newRateNum > 0 ? newRateNum * safeNumber(merged.quantity, 1) : prev?.total_amount);
 
-  const handleSavePDF = async () => {
-    setIsSaving(true);
-    try {
-      const html = generateInvoiceHTML(finalBilling, profile, customer, effectiveSignature, product);
-      const { uri } = await Print.printToFileAsync({ html });
-      toast.success('Invoice PDF saved successfully.', 'PDF Saved');
-    } catch (error: any) {
-      toast.error('Failed to save PDF.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+          merged.rate = String(safeNumber(resRate));
+          merged.amount = String(safeNumber(resAmount));
+          merged.total_amount = String(safeNumber(resTotal));
 
-  const handleShare = async () => {
-    setIsSharing(true);
-    try {
-      const html = generateInvoiceHTML(finalBilling, profile, customer, effectiveSignature, product);
-      const { uri } = await Print.printToFileAsync({ html });
+          if (updated?.items && updated.items.length > 0) {
+            merged.items = updated.items.map((it: any) => ({
+              ...it,
+              rate: safeNumber(it.rate ?? resRate),
+              amount: safeNumber(it.amount ?? resAmount),
+              total_amount: safeNumber(it.total_amount ?? it.amount ?? resTotal),
+            }));
+          }
 
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Share Invoice',
-          UTI: 'com.adobe.pdf',
+          return merged as BillingDetails;
         });
-      } else {
-        toast.warn('Sharing is not available on this device.', 'Not Available');
+
+        setShowEditModal(false);
+        toast.success('Invoice updated successfully!', 'Bill Updated');
+      } catch (err: any) {
+        console.error('Failed to update invoice:', err);
+        toast.error(err.message || 'Failed to edit invoice details.');
+      } finally {
+        setIsUpdatingInvoice(false);
       }
-    } catch (error: any) {
-      toast.error('Failed to share invoice.');
-    } finally {
-      setIsSharing(false);
-    }
-  };
+    };
 
-  const handleDone = () => {
-    navigation.popToTop();
-  };
+    const handleOpenServerPDF = async () => {
+      const invNo = finalBilling.invoice_number;
+      if (!invNo) {
+        toast.warn('Invoice number not generated yet.');
+        return;
+      }
+      const baseUrl = getApiBaseUrl();
+      const pdfUrl = `${baseUrl}/api/checkout/invoices/${encodeURIComponent(invNo)}/pdf/`;
+      console.log('Opening server PDF endpoint URL:', pdfUrl);
+      try {
+        const supported = await Linking.canOpenURL(pdfUrl);
+        if (supported) {
+          await Linking.openURL(pdfUrl);
+        } else {
+          await Linking.openURL(pdfUrl);
+        }
+      } catch (err: any) {
+        console.error('Failed to open PDF URL in browser:', err);
+        toast.error(err.message || 'Unable to open PDF preview.');
+      }
+    };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+    const handleSavePDF = async () => {
+      setIsSaving(true);
+      try {
+        const html = generateInvoiceHTML(finalBilling, profile, customer, effectiveSignature, product);
+        const { uri } = await Print.printToFileAsync({ html });
+        toast.success('Invoice PDF saved successfully.', 'PDF Saved');
+      } catch (error: any) {
+        toast.error('Failed to save PDF.');
+      } finally {
+        setIsSaving(false);
+      }
+    };
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={22} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Invoice Details</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <TouchableOpacity style={styles.headerIconBtn} onPress={handleOpenEditModal}>
-            <Ionicons name="create-outline" size={20} color={colors.primary} />
+    const handleShare = async () => {
+      setIsSharing(true);
+      try {
+        const html = generateInvoiceHTML(finalBilling, profile, customer, effectiveSignature, product);
+        const { uri } = await Print.printToFileAsync({ html });
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'application/pdf',
+            dialogTitle: 'Share Invoice',
+            UTI: 'com.adobe.pdf',
+          });
+        } else {
+          toast.warn('Sharing is not available on this device.', 'Not Available');
+        }
+      } catch (error: any) {
+        toast.error('Failed to share invoice.');
+      } finally {
+        setIsSharing(false);
+      }
+    };
+
+    const handleDone = () => {
+      navigation.popToTop();
+    };
+
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </TouchableOpacity>
-          {isViewOnly ? (
-            <View style={styles.headerIconBtn} />
-          ) : (
-            <TouchableOpacity style={styles.headerIconBtn} onPress={handleDone}>
-              <Ionicons name="checkmark" size={22} color={colors.success} />
+          <Text style={styles.headerTitle}>Invoice Details</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <TouchableOpacity style={styles.headerIconBtn} onPress={handleOpenEditModal}>
+              <Ionicons name="create-outline" size={20} color={colors.primary} />
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.contentContainer, isViewOnly && { paddingTop: spacing.md }]}
-      >
-        {/* Success Banner - only shown during active checkout completion */}
-        {!isViewOnly && (
-          <View style={styles.successBanner}>
-            <View style={styles.successIconWrap}>
-              <Ionicons name="checkmark-circle" size={40} color={colors.success} />
-            </View>
-            <Text style={styles.successTitle}>Sale Confirmed!</Text>
-            <Text style={styles.successSub}>
-              {invoiceNumber ? `Invoice ${invoiceNumber}` : 'Your invoice is ready to save or share.'}
-            </Text>
-          </View>
-        )}
-
-        {/* Invoice Preview Card */}
-        <View style={styles.invoiceCard}>
-          {/* Invoice Header */}
-          <View style={styles.invoiceHeader}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <Text style={styles.shopName}>
-                {profile?.shop_name || finalBilling.shop_name}
-              </Text>
-              <Text style={styles.invoiceDate}>{finalBilling.invoice_date}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.editInvoiceInlineBtn}
-              onPress={handleOpenEditModal}
-            >
-              <Ionicons name="pencil" size={13} color={colors.primary} />
-              <Text style={styles.editInvoiceInlineBtnText}>Edit</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Divider */}
-          <View style={styles.cardDivider} />
-
-          {/* Customer Info */}
-          <View style={styles.invoiceSection}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={styles.invoiceSectionLabel}>BILL TO</Text>
-              <TouchableOpacity onPress={handleOpenEditModal}>
-                <Ionicons name="create-outline" size={14} color={colors.primary} />
+            {isViewOnly ? (
+              <View style={styles.headerIconBtn} />
+            ) : (
+              <TouchableOpacity style={styles.headerIconBtn} onPress={handleDone}>
+                <Ionicons name="checkmark" size={22} color={colors.success} />
               </TouchableOpacity>
-            </View>
-            <Text style={styles.customerName}>{finalBilling.customer_name}</Text>
-            {finalBilling.customer_address ? (
-              <Text style={styles.customerDetail}>{finalBilling.customer_address}</Text>
-            ) : null}
-            {finalBilling.customer_contact ? (
-              <Text style={styles.customerDetail}>📞 {finalBilling.customer_contact}</Text>
-            ) : null}
-            {finalBilling.customer_gst ? (
-              <Text style={styles.customerDetail}>GST: {finalBilling.customer_gst}</Text>
-            ) : null}
+            )}
           </View>
-
-          <View style={styles.cardDivider} />
-
-          {/* Products */}
-          <View style={styles.invoiceSection}>
-            <Text style={styles.invoiceSectionLabel}>
-              {finalBilling.items && finalBilling.items.length > 1
-                ? `PRODUCTS (${finalBilling.items.length})`
-                : 'PRODUCT'}
-            </Text>
-            {finalBilling.items && finalBilling.items.length > 0 ? (
-              finalBilling.items.map((it, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.productRow,
-                    idx > 0 && {
-                      marginTop: spacing.md,
-                      paddingTop: spacing.md,
-                      borderTopWidth: 1,
-                      borderTopColor: colors.borderLight,
-                    },
-                  ]}
-                >
-                  <View style={styles.productInfo}>
-                    <Text style={styles.productName}>
-                      {it.brand_name} {it.product_name}
-                    </Text>
-                    <Text style={styles.productSub}>Model: {it.model_number}</Text>
-                    {it.imei_no_1 ? (
-                      <Text style={styles.imeiText}>IMEI 1: {it.imei_no_1}</Text>
-                    ) : null}
-                    {it.imei_no_2 ? (
-                      <Text style={styles.imeiText}>IMEI 2: {it.imei_no_2}</Text>
-                    ) : null}
-                    <Text style={styles.productSub}>
-                      Rate: ₹{safeNumber(it.rate).toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.productQty}>x{it.quantity}</Text>
-                    <Text style={[styles.productName, { marginTop: 4, color: colors.primary }]}>
-                      ₹{safeNumber(it.amount || it.total_amount).toLocaleString('en-IN')}
-                    </Text>
-                  </View>
-                </View>
-              ))
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <TouchableOpacity style={styles.headerIconBtn} onPress={handleOpenEditModal}>
+              <Ionicons name="create-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+            {isViewOnly ? (
+              <View style={styles.headerIconBtn} />
             ) : (
-              <View style={styles.productRow}>
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>
-                    {finalBilling.brand_name} {finalBilling.product_name}
-                  </Text>
-                  <Text style={styles.productSub}>Model: {finalBilling.model_number}</Text>
-                  {finalBilling.imei_no_1 ? (
-                    <Text style={styles.imeiText}>IMEI 1: {finalBilling.imei_no_1}</Text>
-                  ) : null}
-                  {finalBilling.imei_no_2 ? (
-                    <Text style={styles.imeiText}>IMEI 2: {finalBilling.imei_no_2}</Text>
-                  ) : null}
-                  <Text style={styles.productSub}>
-                    Rate: ₹{pricing.rate.toLocaleString('en-IN')}
-                  </Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.productQty}>x{finalBilling.quantity || 1}</Text>
-                  <Text style={[styles.productName, { marginTop: 4, color: colors.primary }]}>
-                    ₹{pricing.totalAmount.toLocaleString('en-IN')}
-                  </Text>
-                </View>
-              </View>
+              <TouchableOpacity style={styles.headerIconBtn} onPress={handleDone}>
+                <Ionicons name="checkmark" size={22} color={colors.success} />
+              </TouchableOpacity>
             )}
-          </View>
-
-          <View style={styles.cardDivider} />
-
-          {/* Pricing */}
-          <View style={styles.invoiceSection}>
-            <Text style={styles.invoiceSectionLabel}>PRICING</Text>
-            <PriceRow label="Rate" value={`₹${pricing.rate.toLocaleString('en-IN')}`} />
-            <PriceRow label="Base Amount" value={`₹${pricing.baseAmount.toLocaleString('en-IN')}`} />
-            <PriceRow label={`GST (${pricing.gstPercent}%)`} value={`₹${pricing.gstAmount.toLocaleString('en-IN')}`} />
-            {pricing.cgstAmount > 0 && (
-              <PriceRow
-                label={`CGST (${pricing.cgstPercent}%)`}
-                value={`₹${pricing.cgstAmount.toLocaleString('en-IN')}`}
-              />
-            )}
-            {pricing.sgstAmount > 0 && (
-              <PriceRow
-                label={`SGST (${pricing.sgstPercent}%)`}
-                value={`₹${pricing.sgstAmount.toLocaleString('en-IN')}`}
-              />
-            )}
-          </View>
-
-          {/* Total */}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Amount</Text>
-            <Text style={styles.totalValue}>
-              ₹{pricing.totalAmount.toLocaleString('en-IN')}
-            </Text>
-          </View>
-
-          {/* Amount in Words */}
-          <View style={styles.wordsBoxOnScreen}>
-            <Text style={styles.wordsLabelOnScreen}>Invoice Amount in Words</Text>
-            <Text style={styles.wordsTextOnScreen}>{numberToWords(pricing.totalAmount)}</Text>
-          </View>
-
-          {pricing.gstPercent > 0 && (
-            <View style={styles.breakdownCard}>
-              <Text style={styles.breakdownTitle}>GST Breakdown</Text>
-              <PriceRow label="Base Amount" value={`₹${pricing.baseAmount.toLocaleString('en-IN')}`} />
-              <PriceRow label={`GST (${pricing.gstPercent}%)`} value={`₹${pricing.gstAmount.toLocaleString('en-IN')}`} />
-              {pricing.cgstAmount > 0 && (
-                <PriceRow
-                  label={`CGST (${pricing.cgstPercent}%)`}
-                  value={`₹${pricing.cgstAmount.toLocaleString('en-IN')}`}
-                />
-              )}
-              {pricing.sgstAmount > 0 && (
-                <PriceRow
-                  label={`SGST (${pricing.sgstPercent}%)`}
-                  value={`₹${pricing.sgstAmount.toLocaleString('en-IN')}`}
-                />
-              )}
-            </View>
-          )}
-
-          {/* Payment Mode */}
-          <View style={styles.paymentRow}>
-            <Ionicons name="wallet-outline" size={16} color={colors.success} />
-            <Text style={styles.paymentText}>
-              Payment: {finalBilling.payment_mode?.toUpperCase() || 'CASH'}
-            </Text>
-          </View>
-
-          <View style={styles.cardDivider} />
-
-          {/* Authorized Signatory */}
-          <View style={styles.signatoryCardOnScreen}>
-            <Text style={styles.signatoryCardLabel}>Authorized Signatory</Text>
-            {effectiveSignature ? (
-              <View style={styles.signatoryImgContainer}>
-                <Image
-                  source={{ uri: effectiveSignature }}
-                  style={styles.onScreenSignatureImage}
-                  resizeMode="contain"
-                />
-              </View>
-            ) : (
-              <View style={styles.signatoryPlaceholder}>
-                <Text style={styles.signatoryPlaceholderText}>No signature on file</Text>
-              </View>
-            )}
-            <Text style={styles.signatoryShopText}>
-              For {profile?.shop_name || finalBilling.shop_name}
-            </Text>
           </View>
         </View>
-      </ScrollView>
 
-      {/* Action Bar */}
-      <View style={styles.actionBar}>
-        <TouchableOpacity style={styles.serverPdfBtn} onPress={handleOpenServerPDF}>
-          <Ionicons name="print-outline" size={18} color={colors.primary} />
-          <Text style={styles.serverPdfBtnText}>Print / PDF</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.editBillBtn} onPress={handleOpenEditModal}>
-          <Ionicons name="create-outline" size={18} color={colors.primary} />
-          <Text style={styles.editBillBtnText}>Edit Invoice</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={isSharing}>
-          {isSharing ? (
-            <ActivityIndicator size="small" color={colors.textInverse} />
-          ) : (
-            <Ionicons name="share-outline" size={18} color={colors.textInverse} />
+        <ScrollView
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[styles.contentContainer, isViewOnly && { paddingTop: spacing.md }]}
+        >
+          {/* Success Banner - only shown during active checkout completion */}
+          {!isViewOnly && (
+            <View style={styles.successBanner}>
+              <View style={styles.successIconWrap}>
+                <Ionicons name="checkmark-circle" size={40} color={colors.success} />
+              </View>
+              <Text style={styles.successTitle}>Sale Confirmed!</Text>
+              <Text style={styles.successSub}>
+                {invoiceNumber ? `Invoice ${invoiceNumber}` : 'Your invoice is ready to save or share.'}
+              </Text>
+            </View>
           )}
-          <Text style={styles.shareBtnText}>{isSharing ? 'Sharing...' : 'Share'}</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Edit Invoice Modal */}
-      <Modal
-        visible={showEditModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowEditModal(false)}
-      >
-        <SafeAreaView style={styles.editModalContainer}>
-          <View style={styles.editModalHeader}>
-            <Text style={styles.editModalTitle}>Edit Invoice Details</Text>
-            <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ padding: 4 }}>
-              <Ionicons name="close" size={22} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+          {/* Invoice Preview Card */}
+          <View style={styles.invoiceCard}>
+            {/* Invoice Header */}
+            <View style={styles.invoiceHeader}>
+              <View style={{ flex: 1, marginRight: spacing.sm }}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <Text style={styles.shopName}>
+                    {profile?.shop_name || finalBilling.shop_name}
+                  </Text>
+                  <Text style={styles.invoiceDate}>{finalBilling.invoice_date}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.editInvoiceInlineBtn}
+                  onPress={handleOpenEditModal}
+                >
+                  <Ionicons name="pencil" size={13} color={colors.primary} />
+                  <Text style={styles.editInvoiceInlineBtnText}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.editInvoiceInlineBtn}
+                  onPress={handleOpenEditModal}
+                >
+                  <Ionicons name="pencil" size={13} color={colors.primary} />
+                  <Text style={styles.editInvoiceInlineBtnText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
 
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalContent}>
-            <Text style={styles.editSectionTitle}>Customer Details</Text>
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Customer Name</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editCustomerName}
-                onChangeText={setEditCustomerName}
-                placeholder="Customer Name"
-              />
-            </View>
+              {/* Divider */}
+              <View style={styles.cardDivider} />
 
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Customer Contact</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editCustomerContact}
-                onChangeText={setEditCustomerContact}
-                keyboardType="phone-pad"
-                placeholder="Customer Contact"
-              />
-            </View>
+              {/* Customer Info */}
+              <View style={styles.invoiceSection}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.invoiceSectionLabel}>BILL TO</Text>
+                  <TouchableOpacity onPress={handleOpenEditModal}>
+                    <Ionicons name="create-outline" size={14} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={styles.invoiceSectionLabel}>BILL TO</Text>
+                  <TouchableOpacity onPress={handleOpenEditModal}>
+                    <Ionicons name="create-outline" size={14} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.customerName}>{finalBilling.customer_name}</Text>
+                {finalBilling.customer_address ? (
+                  <Text style={styles.customerDetail}>{finalBilling.customer_address}</Text>
+                ) : null}
+                {finalBilling.customer_contact ? (
+                  <Text style={styles.customerDetail}>📞 {finalBilling.customer_contact}</Text>
+                ) : null}
+                {finalBilling.customer_gst ? (
+                  <Text style={styles.customerDetail}>GST: {finalBilling.customer_gst}</Text>
+                ) : null}
+                {finalBilling.customer_gst ? (
+                  <Text style={styles.customerDetail}>GST: {finalBilling.customer_gst}</Text>
+                ) : null}
+              </View>
 
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Customer Address</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editCustomerAddress}
-                onChangeText={setEditCustomerAddress}
-                placeholder="Customer Address"
-              />
-            </View>
+              <View style={styles.cardDivider} />
 
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Customer GST Number</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editCustomerGst}
-                onChangeText={setEditCustomerGst}
-                placeholder="Customer GSTIN"
-                autoCapitalize="characters"
-              />
-            </View>
-
-            <Text style={[styles.editSectionTitle, { marginTop: spacing.md }]}>Invoice Meta</Text>
-
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Invoice Date (YYYY-MM-DD)</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editInvoiceDate}
-                onChangeText={setEditInvoiceDate}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
-
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Payment Mode</Text>
-              <View style={styles.paymentModeRow}>
-                {['cash', 'card', 'upi', 'cheque', 'emi'].map((mode) => (
-                  <TouchableOpacity
-                    key={mode}
-                    style={[
-                      styles.paymentModeChip,
-                      editPaymentMode.toLowerCase() === mode && styles.paymentModeChipActive,
-                    ]}
-                    onPress={() => setEditPaymentMode(mode)}
-                  >
-                    <Text
+              {/* Products */}
+              <View style={styles.invoiceSection}>
+                <Text style={styles.invoiceSectionLabel}>
+                  {finalBilling.items && finalBilling.items.length > 1
+                    ? `PRODUCTS (${finalBilling.items.length})`
+                    : 'PRODUCT'}
+                </Text>
+                {finalBilling.items && finalBilling.items.length > 0 ? (
+                  finalBilling.items.map((it, idx) => (
+                    <View
+                      key={idx}
                       style={[
-                        styles.paymentModeChipText,
-                        editPaymentMode.toLowerCase() === mode && styles.paymentModeChipTextActive,
+                        styles.productRow,
+                        idx > 0 && {
+                          marginTop: spacing.md,
+                          paddingTop: spacing.md,
+                          borderTopWidth: 1,
+                          borderTopColor: colors.borderLight,
+                        },
                       ]}
                     >
-                      {mode.toUpperCase()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <View style={styles.productInfo}>
+                        <Text style={styles.productName}>
+                          {it.brand_name} {it.product_name}
+                        </Text>
+                        <Text style={styles.productSub}>Model: {it.model_number}</Text>
+                        {it.imei_no_1 ? (
+                          <Text style={styles.imeiText}>IMEI 1: {it.imei_no_1}</Text>
+                        ) : null}
+                        {it.imei_no_2 ? (
+                          <Text style={styles.imeiText}>IMEI 2: {it.imei_no_2}</Text>
+                        ) : null}
+                        <Text style={styles.productSub}>
+                          Rate: ₹{safeNumber(it.rate).toLocaleString('en-IN')}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <Text style={styles.productQty}>x{it.quantity}</Text>
+                        <Text style={[styles.productName, { marginTop: 4, color: colors.primary }]}>
+                          ₹{safeNumber(it.amount || it.total_amount).toLocaleString('en-IN')}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.productRow}>
+                    <View style={styles.productInfo}>
+                      <Text style={styles.productName}>
+                        {finalBilling.brand_name} {finalBilling.product_name}
+                      </Text>
+                      <Text style={styles.productSub}>Model: {finalBilling.model_number}</Text>
+                      {finalBilling.imei_no_1 ? (
+                        <Text style={styles.imeiText}>IMEI 1: {finalBilling.imei_no_1}</Text>
+                      ) : null}
+                      {finalBilling.imei_no_2 ? (
+                        <Text style={styles.imeiText}>IMEI 2: {finalBilling.imei_no_2}</Text>
+                      ) : null}
+                      <Text style={styles.productSub}>
+                        Rate: ₹{pricing.rate.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={styles.productQty}>x{finalBilling.quantity || 1}</Text>
+                      <Text style={[styles.productName, { marginTop: 4, color: colors.primary }]}>
+                        ₹{pricing.totalAmount.toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.cardDivider} />
+
+              {/* Pricing */}
+              <View style={styles.invoiceSection}>
+                <Text style={styles.invoiceSectionLabel}>PRICING</Text>
+                <PriceRow label="Rate" value={`₹${pricing.rate.toLocaleString('en-IN')}`} />
+                <PriceRow label="Base Amount" value={`₹${pricing.baseAmount.toLocaleString('en-IN')}`} />
+                <PriceRow label={`GST (${pricing.gstPercent}%)`} value={`₹${pricing.gstAmount.toLocaleString('en-IN')}`} />
+                {pricing.cgstAmount > 0 && (
+                  <PriceRow
+                    label={`CGST (${pricing.cgstPercent}%)`}
+                    value={`₹${pricing.cgstAmount.toLocaleString('en-IN')}`}
+                  />
+                )}
+                {pricing.sgstAmount > 0 && (
+                  <PriceRow
+                    label={`SGST (${pricing.sgstPercent}%)`}
+                    value={`₹${pricing.sgstAmount.toLocaleString('en-IN')}`}
+                  />
+                )}
+              </View>
+
+              {/* Total */}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total Amount</Text>
+                <Text style={styles.totalValue}>
+                  ₹{pricing.totalAmount.toLocaleString('en-IN')}
+                </Text>
+              </View>
+
+              {/* Amount in Words */}
+              <View style={styles.wordsBoxOnScreen}>
+                <Text style={styles.wordsLabelOnScreen}>Invoice Amount in Words</Text>
+                <Text style={styles.wordsTextOnScreen}>{numberToWords(pricing.totalAmount)}</Text>
+              </View>
+
+              {pricing.gstPercent > 0 && (
+                <View style={styles.breakdownCard}>
+                  <Text style={styles.breakdownTitle}>GST Breakdown</Text>
+                  <PriceRow label="Base Amount" value={`₹${pricing.baseAmount.toLocaleString('en-IN')}`} />
+                  <PriceRow label={`GST (${pricing.gstPercent}%)`} value={`₹${pricing.gstAmount.toLocaleString('en-IN')}`} />
+                  {pricing.cgstAmount > 0 && (
+                    <PriceRow
+                      label={`CGST (${pricing.cgstPercent}%)`}
+                      value={`₹${pricing.cgstAmount.toLocaleString('en-IN')}`}
+                    />
+                  )}
+                  {pricing.sgstAmount > 0 && (
+                    <PriceRow
+                      label={`SGST (${pricing.sgstPercent}%)`}
+                      value={`₹${pricing.sgstAmount.toLocaleString('en-IN')}`}
+                    />
+                  )}
+                </View>
+              )}
+
+              {/* Payment Mode */}
+              <View style={styles.paymentRow}>
+                <Ionicons name="wallet-outline" size={16} color={colors.success} />
+                <Text style={styles.paymentText}>
+                  Payment: {finalBilling.payment_mode?.toUpperCase() || 'CASH'}
+                </Text>
+              </View>
+
+              <View style={styles.cardDivider} />
+
+              {/* Authorized Signatory */}
+              <View style={styles.signatoryCardOnScreen}>
+                <Text style={styles.signatoryCardLabel}>Authorized Signatory</Text>
+                {effectiveSignature ? (
+                  <View style={styles.signatoryImgContainer}>
+                    <Image
+                      source={{ uri: effectiveSignature }}
+                      style={styles.onScreenSignatureImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ) : (
+                  <View style={styles.signatoryPlaceholder}>
+                    <Text style={styles.signatoryPlaceholderText}>No signature on file</Text>
+                  </View>
+                )}
+                <Text style={styles.signatoryShopText}>
+                  For {profile?.shop_name || finalBilling.shop_name}
+                </Text>
               </View>
             </View>
+        </ScrollView>
 
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Unit Selling Price (Rate)</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editRate}
-                onChangeText={setEditRate}
-                keyboardType="numeric"
-                placeholder="Custom Rate / Unit Price"
-              />
-            </View>
+        {/* Action Bar */}
+        <View style={styles.actionBar}>
+          <TouchableOpacity style={styles.serverPdfBtn} onPress={handleOpenServerPDF}>
+            <Ionicons name="print-outline" size={18} color={colors.primary} />
+            <Text style={styles.serverPdfBtnText}>Print / PDF</Text>
+          </TouchableOpacity>
 
-            <Text style={[styles.editSectionTitle, { marginTop: spacing.md }]}>Business / Shop Info</Text>
+          <TouchableOpacity style={styles.editBillBtn} onPress={handleOpenEditModal}>
+            <Ionicons name="create-outline" size={18} color={colors.primary} />
+            <Text style={styles.editBillBtnText}>Edit Invoice</Text>
+            <TouchableOpacity style={styles.serverPdfBtn} onPress={handleOpenServerPDF}>
+              <Ionicons name="print-outline" size={18} color={colors.primary} />
+              <Text style={styles.serverPdfBtnText}>Print / PDF</Text>
+            </TouchableOpacity>
 
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Shop Name</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editShopName}
-                onChangeText={setEditShopName}
-                placeholder="Business Name"
-              />
-            </View>
+            <TouchableOpacity style={styles.editBillBtn} onPress={handleOpenEditModal}>
+              <Ionicons name="create-outline" size={18} color={colors.primary} />
+              <Text style={styles.editBillBtnText}>Edit Invoice</Text>
+            </TouchableOpacity>
 
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Shop Address</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editShopAddress}
-                onChangeText={setEditShopAddress}
-                placeholder="Business Address"
-              />
-            </View>
-
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>Shop Contact Phone</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editShopContact}
-                onChangeText={setEditShopContact}
-                keyboardType="phone-pad"
-                placeholder="Business Phone"
-              />
-            </View>
-
-            <View style={styles.editField}>
-              <Text style={styles.editLabel}>GSTIN</Text>
-              <TextInput
-                style={styles.editInput}
-                value={editGstin}
-                onChangeText={setEditGstin}
-                placeholder="Retailer GSTIN"
-                autoCapitalize="characters"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.saveEditSubmitBtn}
-              onPress={handleSaveInvoiceEdit}
-              disabled={isUpdatingInvoice}
-            >
-              {isUpdatingInvoice ? (
+            <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={isSharing}>
+              {isSharing ? (
                 <ActivityIndicator size="small" color={colors.textInverse} />
               ) : (
-                <Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />
+            <Ionicons name="share-outline" size={18} color={colors.textInverse} />
+            <Ionicons name="share-outline" size={18} color={colors.textInverse} />
               )}
-              <Text style={styles.saveEditSubmitBtnText}>
-                {isUpdatingInvoice ? 'Saving Changes...' : 'Update Invoice Details'}
-              </Text>
+              <Text style={styles.shareBtnText}>{isSharing ? 'Sharing...' : 'Share'}</Text>
             </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+        </View>
+
+        {/* Edit Invoice Modal */}
+        <Modal
+          visible={showEditModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <SafeAreaView style={styles.editModalContainer}>
+            <View style={styles.editModalHeader}>
+              <Text style={styles.editModalTitle}>Edit Invoice Details</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalContent}>
+              <Text style={styles.editSectionTitle}>Customer Details</Text>
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer Name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerName}
+                  onChangeText={setEditCustomerName}
+                  placeholder="Customer Name"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer Contact</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerContact}
+                  onChangeText={setEditCustomerContact}
+                  keyboardType="phone-pad"
+                  placeholder="Customer Contact"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer Address</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerAddress}
+                  onChangeText={setEditCustomerAddress}
+                  placeholder="Customer Address"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer GST Number</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerGst}
+                  onChangeText={setEditCustomerGst}
+                  placeholder="Customer GSTIN"
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <Text style={[styles.editSectionTitle, { marginTop: spacing.md }]}>Invoice Meta</Text>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Invoice Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editInvoiceDate}
+                  onChangeText={setEditInvoiceDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Payment Mode</Text>
+                <View style={styles.paymentModeRow}>
+                  {['cash', 'card', 'upi', 'cheque', 'emi'].map((mode) => (
+                    <TouchableOpacity
+                      key={mode}
+                      style={[
+                        styles.paymentModeChip,
+                        editPaymentMode.toLowerCase() === mode && styles.paymentModeChipActive,
+                      ]}
+                      onPress={() => setEditPaymentMode(mode)}
+                    >
+                      <Text
+                        style={[
+                          styles.paymentModeChipText,
+                          editPaymentMode.toLowerCase() === mode && styles.paymentModeChipTextActive,
+                        ]}
+                      >
+                        {mode.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Unit Selling Price (Rate)</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editRate}
+                  onChangeText={setEditRate}
+                  keyboardType="numeric"
+                  placeholder="Custom Rate / Unit Price"
+                />
+              </View>
+
+              <Text style={[styles.editSectionTitle, { marginTop: spacing.md }]}>Business / Shop Info</Text>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Shop Name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editShopName}
+                  onChangeText={setEditShopName}
+                  placeholder="Business Name"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Shop Address</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editShopAddress}
+                  onChangeText={setEditShopAddress}
+                  placeholder="Business Address"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Shop Contact Phone</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editShopContact}
+                  onChangeText={setEditShopContact}
+                  keyboardType="phone-pad"
+                  placeholder="Business Phone"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>GSTIN</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editGstin}
+                  onChangeText={setEditGstin}
+                  placeholder="Retailer GSTIN"
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.saveEditSubmitBtn}
+                onPress={handleSaveInvoiceEdit}
+                disabled={isUpdatingInvoice}
+              >
+                {isUpdatingInvoice ? (
+                  <ActivityIndicator size="small" color={colors.textInverse} />
+                ) : (
+                  <Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />
+                )}
+                <Text style={styles.saveEditSubmitBtnText}>
+                  {isUpdatingInvoice ? 'Saving Changes...' : 'Update Invoice Details'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Edit Invoice Modal */}
+        <Modal
+          visible={showEditModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <SafeAreaView style={styles.editModalContainer}>
+            <View style={styles.editModalHeader}>
+              <Text style={styles.editModalTitle}>Edit Invoice Details</Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)} style={{ padding: 4 }}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.editModalContent}>
+              <Text style={styles.editSectionTitle}>Customer Details</Text>
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer Name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerName}
+                  onChangeText={setEditCustomerName}
+                  placeholder="Customer Name"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer Contact</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerContact}
+                  onChangeText={setEditCustomerContact}
+                  keyboardType="phone-pad"
+                  placeholder="Customer Contact"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer Address</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerAddress}
+                  onChangeText={setEditCustomerAddress}
+                  placeholder="Customer Address"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Customer GST Number</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editCustomerGst}
+                  onChangeText={setEditCustomerGst}
+                  placeholder="Customer GSTIN"
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <Text style={[styles.editSectionTitle, { marginTop: spacing.md }]}>Invoice Meta</Text>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Invoice Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editInvoiceDate}
+                  onChangeText={setEditInvoiceDate}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Payment Mode</Text>
+                <View style={styles.paymentModeRow}>
+                  {['cash', 'card', 'upi', 'cheque', 'emi'].map((mode) => (
+                    <TouchableOpacity
+                      key={mode}
+                      style={[
+                        styles.paymentModeChip,
+                        editPaymentMode.toLowerCase() === mode && styles.paymentModeChipActive,
+                      ]}
+                      onPress={() => setEditPaymentMode(mode)}
+                    >
+                      <Text
+                        style={[
+                          styles.paymentModeChipText,
+                          editPaymentMode.toLowerCase() === mode && styles.paymentModeChipTextActive,
+                        ]}
+                      >
+                        {mode.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Unit Selling Price (Rate)</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editRate}
+                  onChangeText={setEditRate}
+                  keyboardType="numeric"
+                  placeholder="Custom Rate / Unit Price"
+                />
+              </View>
+
+              <Text style={[styles.editSectionTitle, { marginTop: spacing.md }]}>Business / Shop Info</Text>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Shop Name</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editShopName}
+                  onChangeText={setEditShopName}
+                  placeholder="Business Name"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Shop Address</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editShopAddress}
+                  onChangeText={setEditShopAddress}
+                  placeholder="Business Address"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>Shop Contact Phone</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editShopContact}
+                  onChangeText={setEditShopContact}
+                  keyboardType="phone-pad"
+                  placeholder="Business Phone"
+                />
+              </View>
+
+              <View style={styles.editField}>
+                <Text style={styles.editLabel}>GSTIN</Text>
+                <TextInput
+                  style={styles.editInput}
+                  value={editGstin}
+                  onChangeText={setEditGstin}
+                  placeholder="Retailer GSTIN"
+                  autoCapitalize="characters"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.saveEditSubmitBtn}
+                onPress={handleSaveInvoiceEdit}
+                disabled={isUpdatingInvoice}
+              >
+                {isUpdatingInvoice ? (
+                  <ActivityIndicator size="small" color={colors.textInverse} />
+                ) : (
+                  <Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />
+                )}
+                <Text style={styles.saveEditSubmitBtnText}>
+                  {isUpdatingInvoice ? 'Saving Changes...' : 'Update Invoice Details'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    );
+  };
+
+  const PriceRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+    <View style={styles.priceRow}>
+      <Text style={styles.priceLabel}>{label}</Text>
+      <Text style={styles.priceValue}>{value}</Text>
+    </View>
   );
-};
 
-const PriceRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <View style={styles.priceRow}>
-    <Text style={styles.priceLabel}>{label}</Text>
-    <Text style={styles.priceValue}>{value}</Text>
-  </View>
-);
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      height: 56, paddingHorizontal: spacing.lg, flexDirection: 'row',
+      alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    headerIconBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+    headerTitle: { ...typography.subtitle, color: colors.text },
+    content: { flex: 1 },
+    contentContainer: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
+    errorText: { ...typography.body, color: colors.danger, textAlign: 'center', marginTop: spacing.xl },
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    height: 56, paddingHorizontal: spacing.lg, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-  },
-  headerIconBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { ...typography.subtitle, color: colors.text },
-  content: { flex: 1 },
-  contentContainer: { padding: spacing.lg, paddingBottom: spacing['3xl'] },
-  errorText: { ...typography.body, color: colors.danger, textAlign: 'center', marginTop: spacing.xl },
+    // Success Banner
+    successBanner: {
+      alignItems: 'center', marginBottom: spacing.xl, paddingVertical: spacing.lg,
+    },
+    successIconWrap: { marginBottom: spacing.md },
+    successTitle: { ...typography.heading3, color: colors.text, marginBottom: 4 },
+    successSub: { ...typography.body, color: colors.textSecondary },
 
-  // Success Banner
-  successBanner: {
-    alignItems: 'center', marginBottom: spacing.xl, paddingVertical: spacing.lg,
-  },
-  successIconWrap: { marginBottom: spacing.md },
-  successTitle: { ...typography.heading3, color: colors.text, marginBottom: 4 },
-  successSub: { ...typography.body, color: colors.textSecondary },
+    // Invoice Card
+    invoiceCard: {
+      backgroundColor: colors.surface, borderRadius: borderRadius.lg,
+      borderWidth: 1, borderColor: colors.borderLight, ...shadows.md, overflow: 'hidden',
+    },
+    invoiceHeader: {
+      flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+      padding: spacing.xl,
+    },
+    shopName: { ...typography.subtitle, color: colors.primary, fontSize: 17 },
+    invoiceDate: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
+    invoiceBadge: {
+      backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs,
+      borderRadius: borderRadius.sm,
+    },
+    invoiceBadgeText: {
+      ...typography.caption, color: colors.textInverse, fontWeight: '700', letterSpacing: 2,
+    },
+    cardDivider: { height: 1, backgroundColor: colors.borderLight },
 
-  // Invoice Card
-  invoiceCard: {
-    backgroundColor: colors.surface, borderRadius: borderRadius.lg,
-    borderWidth: 1, borderColor: colors.borderLight, ...shadows.md, overflow: 'hidden',
-  },
-  invoiceHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
-    padding: spacing.xl,
-  },
-  shopName: { ...typography.subtitle, color: colors.primary, fontSize: 17 },
-  invoiceDate: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
-  invoiceBadge: {
-    backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  invoiceBadgeText: {
-    ...typography.caption, color: colors.textInverse, fontWeight: '700', letterSpacing: 2,
-  },
-  cardDivider: { height: 1, backgroundColor: colors.borderLight },
+    // Sections
+    invoiceSection: { padding: spacing.xl },
+    invoiceSectionLabel: {
+      ...typography.caption, color: colors.textTertiary, fontWeight: '600',
+      letterSpacing: 1.5, marginBottom: spacing.sm, fontSize: 10,
+    },
+    customerName: { ...typography.bodyMedium, color: colors.text, fontWeight: '600' },
+    customerDetail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 
-  // Sections
-  invoiceSection: { padding: spacing.xl },
-  invoiceSectionLabel: {
-    ...typography.caption, color: colors.textTertiary, fontWeight: '600',
-    letterSpacing: 1.5, marginBottom: spacing.sm, fontSize: 10,
-  },
-  customerName: { ...typography.bodyMedium, color: colors.text, fontWeight: '600' },
-  customerDetail: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+    // Product
+    productRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+    productInfo: { flex: 1 },
+    productName: { ...typography.bodyMedium, color: colors.text, fontWeight: '600' },
+    productSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+    imeiText: {
+      ...typography.caption, color: colors.textSecondary, fontFamily: 'monospace',
+      marginTop: 4, fontSize: 11,
+    },
+    productQty: {
+      ...typography.subtitle, color: colors.primary, marginLeft: spacing.md,
+    },
 
-  // Product
-  productRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  productInfo: { flex: 1 },
-  productName: { ...typography.bodyMedium, color: colors.text, fontWeight: '600' },
-  productSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  imeiText: {
-    ...typography.caption, color: colors.textSecondary, fontFamily: 'monospace',
-    marginTop: 4, fontSize: 11,
-  },
-  productQty: {
-    ...typography.subtitle, color: colors.primary, marginLeft: spacing.md,
-  },
+    // Pricing
+    priceRow: {
+      flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6,
+    },
+    priceLabel: { ...typography.body, color: colors.textSecondary },
+    priceValue: { ...typography.bodyMedium, color: colors.text },
 
-  // Pricing
-  priceRow: {
-    flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6,
-  },
-  priceLabel: { ...typography.body, color: colors.textSecondary },
-  priceValue: { ...typography.bodyMedium, color: colors.text },
+    // Total
+    totalRow: {
+      flexDirection: 'row', justifyContent: 'space-between',
+      backgroundColor: colors.primaryLightest, padding: spacing.xl,
+    },
+    totalLabel: { ...typography.subtitle, color: colors.primaryDark },
+    totalValue: { ...typography.heading3, color: colors.primary },
 
-  // Total
-  totalRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    backgroundColor: colors.primaryLightest, padding: spacing.xl,
-  },
-  totalLabel: { ...typography.subtitle, color: colors.primaryDark },
-  totalValue: { ...typography.heading3, color: colors.primary },
+    // Payment
+    paymentRow: {
+      flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+      padding: spacing.lg, justifyContent: 'center',
+    },
+    paymentText: { ...typography.captionMedium, color: colors.success, fontWeight: '600' },
+    breakdownCard: {
+      marginTop: spacing.lg,
+      paddingTop: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingBottom: spacing.lg,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+      gap: spacing.xs,
+    },
+    breakdownTitle: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+    },
 
-  // Payment
-  paymentRow: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
-    padding: spacing.lg, justifyContent: 'center',
-  },
-  paymentText: { ...typography.captionMedium, color: colors.success, fontWeight: '600' },
-  breakdownCard: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    gap: spacing.xs,
-  },
-  breakdownTitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
+    // Action Bar
+    actionBar: {
+      flexDirection: 'row', gap: spacing.sm, padding: spacing.md,
+      flexDirection: 'row', gap: spacing.sm, padding: spacing.md,
+      backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight,
+    },
+    saveBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingVertical: spacing.md, borderRadius: borderRadius.button,
+      backgroundColor: colors.primaryLightest, borderWidth: 1.5, borderColor: colors.primary,
+    },
+    saveBtnText: { ...typography.captionMedium, color: colors.primary, fontWeight: '600' },
+    serverPdfBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingVertical: spacing.md, borderRadius: borderRadius.button,
+      backgroundColor: colors.primaryLightest, borderWidth: 1.5, borderColor: colors.primary,
+    },
+    serverPdfBtnText: { ...typography.captionMedium, color: colors.primary, fontWeight: '700' },
+    editBillBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingVertical: spacing.md, borderRadius: borderRadius.button,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
+    },
+    editBillBtnText: { ...typography.captionMedium, color: colors.text, fontWeight: '600' },
+    saveBtnText: { ...typography.captionMedium, color: colors.primary, fontWeight: '600' },
+    serverPdfBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingVertical: spacing.md, borderRadius: borderRadius.button,
+      backgroundColor: colors.primaryLightest, borderWidth: 1.5, borderColor: colors.primary,
+    },
+    serverPdfBtnText: { ...typography.captionMedium, color: colors.primary, fontWeight: '700' },
+    editBillBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingVertical: spacing.md, borderRadius: borderRadius.button,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
+    },
+    editBillBtnText: { ...typography.captionMedium, color: colors.text, fontWeight: '600' },
+    shareBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+      paddingVertical: spacing.md, borderRadius: borderRadius.button, backgroundColor: colors.success,
+    },
+    shareBtnText: { ...typography.captionMedium, color: colors.textInverse, fontWeight: '600' },
 
-  // Action Bar
-  actionBar: {
-    flexDirection: 'row', gap: spacing.sm, padding: spacing.md,
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight,
-  },
-  saveBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    paddingVertical: spacing.md, borderRadius: borderRadius.button,
-    backgroundColor: colors.primaryLightest, borderWidth: 1.5, borderColor: colors.primary,
-  },
-  saveBtnText: { ...typography.captionMedium, color: colors.primary, fontWeight: '600' },
-  serverPdfBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    paddingVertical: spacing.md, borderRadius: borderRadius.button,
-    backgroundColor: colors.primaryLightest, borderWidth: 1.5, borderColor: colors.primary,
-  },
-  serverPdfBtnText: { ...typography.captionMedium, color: colors.primary, fontWeight: '700' },
-  editBillBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    paddingVertical: spacing.md, borderRadius: borderRadius.button,
-    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
-  },
-  editBillBtnText: { ...typography.captionMedium, color: colors.text, fontWeight: '600' },
-  shareBtn: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    paddingVertical: spacing.md, borderRadius: borderRadius.button, backgroundColor: colors.success,
-  },
-  shareBtnText: { ...typography.captionMedium, color: colors.textInverse, fontWeight: '600' },
+    editInvoiceInlineBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: colors.primaryLightest, paddingHorizontal: 10, paddingVertical: 4,
+      borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.primary,
+    },
+    editInvoiceInlineBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700', fontSize: 11 },
 
-  editInvoiceInlineBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: colors.primaryLightest, paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.primary,
-  },
-  editInvoiceInlineBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700', fontSize: 11 },
+    // Edit Modal Styles
+    editModalContainer: { flex: 1, backgroundColor: colors.background },
+    editModalHeader: {
+      height: 56, paddingHorizontal: spacing.lg, flexDirection: 'row',
+      alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    editModalTitle: { ...typography.subtitle, color: colors.text, fontWeight: '700' },
+    editModalContent: { padding: spacing.lg, paddingBottom: spacing['4xl'] },
+    editSectionTitle: { ...typography.subtitle, color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: spacing.sm },
+    editField: { marginBottom: spacing.md },
+    editLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
+    editInput: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+      borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+      ...typography.body, color: colors.text,
+    },
+    paymentModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: 4 },
+    paymentModeChip: {
+      paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderLight,
+    },
+    paymentModeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    paymentModeChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', fontSize: 11 },
+    paymentModeChipTextActive: { color: colors.textInverse },
+    saveEditSubmitBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+      backgroundColor: colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.button,
+      marginTop: spacing.xl, ...shadows.md,
+    },
+    saveEditSubmitBtnText: { ...typography.bodyMedium, color: colors.textInverse, fontWeight: '700' },
+    shareBtnText: { ...typography.captionMedium, color: colors.textInverse, fontWeight: '600' },
 
-  // Edit Modal Styles
-  editModalContainer: { flex: 1, backgroundColor: colors.background },
-  editModalHeader: {
-    height: 56, paddingHorizontal: spacing.lg, flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-  },
-  editModalTitle: { ...typography.subtitle, color: colors.text, fontWeight: '700' },
-  editModalContent: { padding: spacing.lg, paddingBottom: spacing['4xl'] },
-  editSectionTitle: { ...typography.subtitle, color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: spacing.sm },
-  editField: { marginBottom: spacing.md },
-  editLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
-  editInput: {
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
-    ...typography.body, color: colors.text,
-  },
-  paymentModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: 4 },
-  paymentModeChip: {
-    paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderLight,
-  },
-  paymentModeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  paymentModeChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', fontSize: 11 },
-  paymentModeChipTextActive: { color: colors.textInverse },
-  saveEditSubmitBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
-    backgroundColor: colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.button,
-    marginTop: spacing.xl, ...shadows.md,
-  },
-  saveEditSubmitBtnText: { ...typography.bodyMedium, color: colors.textInverse, fontWeight: '700' },
+    editInvoiceInlineBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 4,
+      backgroundColor: colors.primaryLightest, paddingHorizontal: 10, paddingVertical: 4,
+      borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.primary,
+    },
+    editInvoiceInlineBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700', fontSize: 11 },
 
-  // Words Box
-  wordsBoxOnScreen: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: borderRadius.md,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
-  },
-  wordsLabelOnScreen: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  wordsTextOnScreen: {
-    ...typography.bodyMedium,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: 13,
-  },
+    // Edit Modal Styles
+    editModalContainer: { flex: 1, backgroundColor: colors.background },
+    editModalHeader: {
+      height: 56, paddingHorizontal: spacing.lg, flexDirection: 'row',
+      alignItems: 'center', justifyContent: 'space-between',
+      backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+    },
+    editModalTitle: { ...typography.subtitle, color: colors.text, fontWeight: '700' },
+    editModalContent: { padding: spacing.lg, paddingBottom: spacing['4xl'] },
+    editSectionTitle: { ...typography.subtitle, color: colors.primary, fontWeight: '700', fontSize: 14, marginBottom: spacing.sm },
+    editField: { marginBottom: spacing.md },
+    editLabel: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', marginBottom: 4 },
+    editInput: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+      borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+      ...typography.body, color: colors.text,
+    },
+    paymentModeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: 4 },
+    paymentModeChip: {
+      paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: borderRadius.full,
+      backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderLight,
+    },
+    paymentModeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    paymentModeChipText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600', fontSize: 11 },
+    paymentModeChipTextActive: { color: colors.textInverse },
+    saveEditSubmitBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+      backgroundColor: colors.primary, paddingVertical: spacing.lg, borderRadius: borderRadius.button,
+      marginTop: spacing.xl, ...shadows.md,
+    },
+    saveEditSubmitBtnText: { ...typography.bodyMedium, color: colors.textInverse, fontWeight: '700' },
 
-  // Authorized Signatory
-  signatoryCardOnScreen: {
-    padding: spacing.lg,
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-  signatoryCardLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-  },
-  signatoryImgContainer: {
-    width: 160,
-    height: 60,
-    backgroundColor: '#fff',
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
-    marginBottom: spacing.xs,
-  },
-  onScreenSignatureImage: {
-    width: '100%',
-    height: '100%',
-  },
-  signatoryPlaceholder: {
-    width: 140,
-    height: 40,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    marginBottom: spacing.xs,
-  },
-  signatoryPlaceholderText: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    fontSize: 10,
-  },
-  signatoryShopText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-});
+    // Words Box
+    wordsBoxOnScreen: {
+      marginHorizontal: spacing.lg,
+      marginTop: spacing.md,
+      padding: spacing.md,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: borderRadius.md,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+    },
+    wordsLabelOnScreen: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontSize: 10,
+      textTransform: 'uppercase',
+      fontWeight: '600',
+      letterSpacing: 0.5,
+      marginBottom: 2,
+    },
+    wordsTextOnScreen: {
+      ...typography.bodyMedium,
+      color: colors.text,
+      fontWeight: '600',
+      fontSize: 13,
+    },
+
+    // Authorized Signatory
+    signatoryCardOnScreen: {
+      padding: spacing.lg,
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+    },
+    signatoryCardLabel: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      fontWeight: '600',
+      marginBottom: spacing.sm,
+    },
+    signatoryImgContainer: {
+      width: 160,
+      height: 60,
+      backgroundColor: '#fff',
+      borderRadius: borderRadius.sm,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 4,
+      marginBottom: spacing.xs,
+    },
+    onScreenSignatureImage: {
+      width: '100%',
+      height: '100%',
+    },
+    signatoryPlaceholder: {
+      width: 140,
+      height: 40,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginBottom: spacing.xs,
+    },
+    signatoryPlaceholderText: {
+      ...typography.caption,
+      color: colors.textTertiary,
+      fontSize: 10,
+    },
+    signatoryShopText: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      fontWeight: '500',
+      marginTop: 2,
+    },
+  });
