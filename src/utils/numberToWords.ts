@@ -57,7 +57,13 @@ function convertBelowThousand(n: number): string {
 
 export function numberToWords(amount: number | string | null | undefined): string {
   if (amount == null) return '';
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  let num: number;
+  if (typeof amount === 'string') {
+    const cleaned = amount.replace(/[^0-9.-]/g, '');
+    num = parseFloat(cleaned);
+  } else {
+    num = amount;
+  }
   if (isNaN(num) || num === 0) return 'Zero Rupees Only';
 
   const absNum = Math.abs(num);

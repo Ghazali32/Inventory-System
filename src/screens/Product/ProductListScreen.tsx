@@ -26,7 +26,17 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
     }
   }, [error]);
 
-  useFocusEffect(useCallback(() => { fetchProducts(); }, []));
+  const handleTabChange = (tab: StockTab) => {
+    setActiveTab(tab);
+    setSelectedCategory(null);
+    fetchProducts({ sold: tab === 'sold' });
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProducts({ sold: activeTab === 'sold' });
+    }, [activeTab, fetchProducts])
+  );
 
   // Separate stock vs sold
   const stockProducts = products.filter((p) => !p.sold);
@@ -57,7 +67,7 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'stock' && styles.tabActive]}
-          onPress={() => { setActiveTab('stock'); setSelectedCategory(null); }}
+          onPress={() => handleTabChange('stock')}
         >
           <Ionicons
             name="cube-outline"
@@ -70,7 +80,7 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'sold' && styles.tabSoldActive]}
-          onPress={() => { setActiveTab('sold'); setSelectedCategory(null); }}
+          onPress={() => handleTabChange('sold')}
         >
           <Ionicons
             name="pricetag-outline"
@@ -146,7 +156,7 @@ export const ProductListScreen: React.FC<{navigation: any}> = ({ navigation }) =
         )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchProducts} tintColor={colors.primary} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => fetchProducts({ sold: activeTab === 'sold' })} tintColor={colors.primary} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
