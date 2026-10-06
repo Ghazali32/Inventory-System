@@ -611,15 +611,49 @@ Response fields:
 
 ### `GET /api/checkout/invoices/<invoice_number>/`
 
-Fetch a full invoice payload for one sale.
+Fetch a full invoice payload for one sale (supports single-item and multi-item invoices).
 
-Response fields include:
+- **`GET`**: Returns invoice metadata, customer snapshot, shop details, items array, and grand total.
+- **`PUT` / `PATCH`**: Edit generated invoice details.
 
-- invoice metadata (`invoice_number`, `invoice_date`, `payment_mode`, `selling_datetime`)
-- customer snapshot (`customer_name`, `customer_address`, `customer_contact`, `customer_gst`)
-- product snapshot (`product_name`, `brand_name`, `model_number`, `imei_no_1`, `imei_no_2`)
-- tax/amount fields (`rate`, `amount`, `cgst_*`, `sgst_*`, `total_amount`)
-- inventory price fields (`buying_price`, `msp`, `mrp`)
+**`PUT` / `PATCH` Request Body Fields:**
+
+| Field | Required | Type | Notes |
+|-------|----------|------|-------|
+| `shop_name` | No | string | Custom shop/business name for invoice |
+| `gstin` | No | string | Retailer GSTIN |
+| `shop_address` | No | string | Retailer address |
+| `shop_contact` | No | string | Retailer phone |
+| `customer_name` | No | string | Customer name |
+| `customer_contact` | No | string | Customer phone number |
+| `customer_address` | No | string | Customer address |
+| `customer_gst` | No | string | Customer GST number |
+| `invoice_date` | No | string | Format `YYYY-MM-DD` |
+| `payment_mode` | No | string | `cash`, `card`, `upi`, `cheque`, `emi` |
+| `items` | No | array | List of line item updates |
+
+`items[]` update fields:
+
+| Field | Required | Type | Notes |
+|-------|----------|------|-------|
+| `id` | Yes | integer | SoldItem ID |
+| `product_name` | No | string | Custom product description |
+| `brand_name` | No | string | Brand name |
+| `model_number` | No | string | Model number |
+| `quantity` | No | integer | Quantity (min 1) |
+| `rate` | No | decimal/string | Custom unit price |
+| `amount` | No | decimal/string | Custom line total |
+
+---
+
+### `GET /api/checkout/invoices/<invoice_number>/pdf/`
+
+**Purpose:**
+- Renders a clean, print-optimized HTML invoice layout ready for display or PDF download.
+- Features: single shop header, compact customer address block, itemized table, total amount, retailer signature image, and built-in `Print / Save as PDF` button.
+
+**FE Instructions:**
+- Open this URL directly in a WebView or Browser window to view/print/save PDF bills.
 
 ### `POST /api/checkout/preview/`
 
@@ -710,6 +744,8 @@ Request body fields:
 | `customer_state` | No | string | For new sold customer |
 | `customer_pincode` | No | string | For new sold customer |
 | `payment_mode` | No | string | `cash`, `card`, `upi`, `cheque`, `emi` |
+| `rate` | No | decimal/string | Optional custom selling price (does not mutate saved inventory price) |
+| `custom_price` | No | decimal/string | Alias for custom selling price |
 
 At least one of `inventory_id`, `product_barcode`, `imei1`, `imei2` is required.
 
@@ -893,6 +929,8 @@ Output:
 |-------|----------|------|-------|
 | `inventory_id` | Yes | integer | Reference inventory item (used to identify the product) |
 | `quantity` | No | integer | Default `1`. How many units to sell. Range: 1–999 |
+| `rate` | No | decimal/string | Optional custom unit price for billing (does not mutate saved inventory MSP) |
+| `custom_price` | No | decimal/string | Alias for custom unit price |
 
 **Behavior:**
 - All items get the **same invoice number** (one invoice).

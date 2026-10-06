@@ -21,15 +21,28 @@ import { Product } from '../../api/product.api';
 import { toast } from '../../store/toast.store';
 
 const resolveGSTFields = (product: Product, rateVal: number) => {
-  const gstPercent = product.gst != null ? Number(product.gst) : 
-    (product.category?.toLowerCase().includes('electro') ||
-     product.category?.toLowerCase().includes('phone') ||
-     product.category?.toLowerCase().includes('mobile') ||
-     product.category?.toLowerCase().includes('laptop') ||
-     product.category?.toLowerCase().includes('tablet') ||
-     product.category?.toLowerCase().includes('smart') ||
-     product.category?.toLowerCase().includes('access')) ? 18 : 0;
-  
+  const combinedText = `${product.category || ''} ${product.brand || ''} ${product.model || ''}`.toLowerCase();
+  const isExplicitlyNonGstOrGift =
+    combinedText.includes('gift') ||
+    combinedText.includes('local') ||
+    combinedText.includes('non-gst') ||
+    combinedText.includes('nongst') ||
+    combinedText.includes('voucher') ||
+    combinedText.includes('free');
+
+  const isElectronicOrPhone =
+    Boolean(product.imei1 || product.imei2) ||
+    /phone|mobile|smart|laptop|tablet|electro|access|headphone|earphone|watch|charger|cable|gadget|device|iphone|samsung|nothing|realme|oppo|vivo|oneplus|xiaomi|redmi|poco|apple|motorola|nokia/i.test(
+      combinedText
+    );
+
+  let gstPercent = 0;
+  if (product.gst != null && Number(product.gst) >= 0) {
+    gstPercent = Number(product.gst);
+  } else if (isElectronicOrPhone && !isExplicitlyNonGstOrGift) {
+    gstPercent = 18;
+  }
+
   if (gstPercent > 0) {
     const baseAmount = rateVal / (1 + gstPercent / 100);
     const gstAmount = rateVal - baseAmount;
@@ -43,7 +56,7 @@ const resolveGSTFields = (product: Product, rateVal: number) => {
       sgst_amount: (gstAmount / 2).toFixed(2),
     };
   }
-  
+
   return {
     gst_percent: '0',
     gst_amount: '0',
@@ -153,9 +166,10 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
           customer_state: state.trim() || undefined,
           customer_pincode: pincode.trim() || undefined,
           payment_mode: 'cash',
-          items: items.map((it) => ({
+          items: items.map((it: any) => ({
             inventory_id: it.product.id,
             quantity: it.quantity,
+            rate: it.custom_price !== undefined && it.custom_price !== null ? it.custom_price : undefined,
           })),
         });
 
@@ -214,6 +228,8 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         return;
       }
 
+      const singleCustomRate = (items?.[0] as any)?.custom_price;
+
       const previewResult = await checkoutPreview({
         inventory_id: product.id,
       });
@@ -230,6 +246,7 @@ export const CustomerFormScreen: React.FC<CustomerFormScreenProps> = ({
         customer_state: state.trim() || undefined,
         customer_pincode: pincode.trim() || undefined,
         payment_mode: 'cash',
+        rate: singleCustomRate !== undefined && singleCustomRate !== null ? singleCustomRate : undefined,
       });
 
       if (!completeResult.sale_completed) {

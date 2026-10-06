@@ -8,6 +8,7 @@ import {
   StatusBar,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../theme'
 import { SoldItemHistory } from '../../api/product.api';
 import { useProductStore } from '../../store/product.store';
 import { toast } from '../../store/toast.store';
+import { getApiBaseUrl } from '../../api/client';
 
 interface SaleDetailScreenProps {
   navigation: any;
@@ -169,6 +171,20 @@ export const SaleDetailScreen: React.FC<SaleDetailScreenProps> = ({
     );
   }
 
+  const handleOpenServerPDF = async () => {
+    if (!sale?.invoice_number) {
+      toast.error('Invoice number is not available for this sale.');
+      return;
+    }
+    const baseUrl = getApiBaseUrl();
+    const pdfUrl = `${baseUrl}/api/checkout/invoices/${encodeURIComponent(sale.invoice_number)}/pdf/`;
+    try {
+      await Linking.openURL(pdfUrl);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to open PDF preview.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
@@ -288,17 +304,25 @@ export const SaleDetailScreen: React.FC<SaleDetailScreenProps> = ({
       {/* Action Bar */}
       <View style={styles.actionBar}>
         <TouchableOpacity
+          style={styles.printPdfBtn}
+          onPress={handleOpenServerPDF}
+        >
+          <Ionicons name="print-outline" size={18} color={colors.primary} />
+          <Text style={styles.printPdfBtnText}>Print / PDF</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.viewInvoiceBtn}
           onPress={handleViewInvoice}
           disabled={loadingInvoice}
         >
           {loadingInvoice ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.textInverse} />
           ) : (
-            <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+            <Ionicons name="document-text-outline" size={18} color={colors.textInverse} />
           )}
           <Text style={styles.viewInvoiceBtnText}>
-            {loadingInvoice ? 'Loading Invoice...' : 'View Invoice'}
+            {loadingInvoice ? 'Loading...' : 'View Invoice'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -423,13 +447,19 @@ const styles = StyleSheet.create({
 
   // Action Bar
   actionBar: {
-    padding: spacing.lg, backgroundColor: colors.surface,
-    borderTopWidth: 1, borderTopColor: colors.borderLight,
+    flexDirection: 'row', gap: spacing.md, padding: spacing.md,
+    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.borderLight,
   },
-  viewInvoiceBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+  printPdfBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
     paddingVertical: spacing.md, borderRadius: borderRadius.button,
     backgroundColor: colors.primaryLightest, borderWidth: 1.5, borderColor: colors.primary,
   },
-  viewInvoiceBtnText: { ...typography.bodyMedium, color: colors.primary, fontWeight: '600' },
+  printPdfBtnText: { ...typography.bodyMedium, color: colors.primary, fontWeight: '700' },
+  viewInvoiceBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    paddingVertical: spacing.md, borderRadius: borderRadius.button,
+    backgroundColor: colors.primary,
+  },
+  viewInvoiceBtnText: { ...typography.bodyMedium, color: colors.textInverse, fontWeight: '600' },
 });
